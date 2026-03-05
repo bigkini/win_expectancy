@@ -1,9 +1,8 @@
 <!DOCTYPE html>
-<html 
-
+<html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>Win Expectancy Analytics Terminal v5.0</title>
+    <title>Win Expectancy Analytics Terminal v5.1</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root {
@@ -17,11 +16,8 @@
         .scoreboard { background: #000; padding: 15px; border-radius: 8px; border: 1px solid #334155; margin-bottom: 10px; }
         .sb-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
         .sb-table th { color: #475569; font-size: 0.7rem; padding-bottom: 4px; }
-        
-        /* [팀명 수정 스타일] */
         .sb-team-name-input { background: transparent; border: none; color: #fff; font-size: 0.9rem; font-weight: bold; width: 100%; outline: none; border-bottom: 1px solid transparent; }
         .sb-team-name-input:focus { border-bottom: 1px solid var(--accent); }
-        
         .inn-val { color: var(--led); text-align: center; font-size: 1.1rem; font-family: 'Courier New', monospace; font-weight: bold; }
         .sb-total { color: var(--accent); font-size: 1.5rem; font-weight: 900; border-left: 1px solid #334155; text-align: center; }
         .main-grid { display: grid; grid-template-columns: 320px 1fr; gap: 10px; align-items: start; }
@@ -55,7 +51,7 @@
 
 <div class="container">
     <div class="top-bar">
-        <span style="color: var(--accent); font-weight: 900; letter-spacing: 1px;">Win Expectancy Terminal v5.0</span>
+        <span style="color: var(--accent); font-weight: 900; letter-spacing: 1px;">Win Expectancy Terminal v5.1</span>
         <div style="display: flex; gap: 10px; align-items: center;">
             <label style="font-size: 0.75rem;">ENV(RE):</label>
             <input type="number" id="runEnv" value="4.5" step="0.1" class="env-input" oninput="calculate()">
@@ -181,10 +177,7 @@
 
     function getHomeWP(i, h, o, b, vs, hs, env) {
         let lookI = i, lookH = h, lookO = o, lookB = b;
-        if(lookO === 3) {
-            lookO = 0; lookB = "0";
-            if(lookH === 'top') lookH = 'bottom'; else { lookI = lookI + 1; lookH = 'top'; }
-        }
+        if(lookO === 3) { lookO = 0; lookB = "0"; if(lookH === 'top') lookH = 'bottom'; else { lookI = lookI + 1; lookH = 'top'; } }
         const envF = 4.5 / env;
         let diff = Math.round((hs - vs) * envF);
         diff = Math.max(-15, Math.min(15, diff));
@@ -199,10 +192,14 @@
         const hT = Number(document.getElementById('hTotal').innerText);
         const i = Number(document.getElementById('inning').value), h = document.getElementById('half').value;
         const o = Number(document.getElementById('outs').value), b = document.getElementById('bases').value, env = Number(document.getElementById('runEnv').value);
-        const homeWP = getRawHomeWP(i, h, o, b, vT, hT, env);
+        let homeWP = getHomeWP(i, h, o, b, vT, hT, env);
+        if (o === 3) {
+            let nI = i, nH = h; if(h === 'top') nH = 'bottom'; else nI++;
+            homeWP = getHomeWP(nI, nH, 0, "0", vT, hT, env);
+        }
         let li = 0;
         if (o < 3) {
-            const nO_WP = getRawHomeWP(i, h, o + 1, b, vT, hT, env);
+            const nO_WP = getHomeWP(i, h, o + 1, b, vT, hT, env);
             li = Math.abs(homeWP - nO_WP) / 0.027;
             document.getElementById('liDisplay').innerText = li.toFixed(2);
         } else { document.getElementById('liDisplay').innerText = "---"; }
@@ -275,7 +272,7 @@
                 const [inn, half] = log.sit.split('_');
                 const [vTAt, hTAt] = log.sc.split(':').map(Number);
                 if (half === 'T') { document.querySelector(`#sb-v-row [data-inn="${inn}"]`).innerText = vTAt - lVT; lVT = vTAt; } 
-                else { document.querySelector(`#sb-h-row [data-inn="${inn}"]`).innerText = hTAt - lHT; lHT = hTAt; }
+                else { document.querySelector(`#sb-v-row [data-inn="${inn}"]`).innerText = vTAt - lVT; document.querySelector(`#sb-h-row [data-inn="${inn}"]`).innerText = hTAt - lHT; lHT = hTAt; }
             }
             if (newLogs.length > 0) {
                 logsData = newLogs;
@@ -296,7 +293,11 @@
     function undo() { if(logsData.length <= 1 && historyStack.length <= 2) return; const last = JSON.parse(historyStack.pop()); if(last.isLog) { logsData.pop(); renderLogs(); updateChart(); } const prev = JSON.parse(historyStack[historyStack.length - 1]); document.getElementById('curVScore').value = prev.vS; document.getElementById('curHScore').value = prev.hS; document.getElementById('inning').value = prev.inn; document.getElementById('half').value = prev.half; document.getElementById('outs').value = prev.outs; document.getElementById('bases').value = prev.bases; document.getElementById('runEnv').value = prev.env; calculate(); }
 
     document.querySelectorAll('select').forEach(el => el.addEventListener('change', calculate));
-    window.onload = () => { initChart(); calculate(); saveState(); logsData.push({ id: 1, sit: "1_T_0_0", sc: "0:0", homeWP: 50.0, chg: 0, li: "0.81", memo: "Play Ball!" }); renderLogs(); };
+    window.onload = () => { 
+        initChart(); 
+        logsData = [{ id: 1, sit: "1_T_0_0", sc: "0:0", homeWP: 50.0, chg: 0, li: "0.81", memo: "Play Ball!" }];
+        renderLogs(); updateChart(); calculate(); saveState(true);
+    };
 </script>
 </body>
 </html>
