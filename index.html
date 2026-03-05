@@ -107,17 +107,17 @@
     </div>
 
     <div class="log-section">
+                <div style="display: flex; gap: 5px; padding: 10px;">
+            <button class="btn-import" onclick="document.getElementById('csvInput').click()">IMPORT CSV</button>
+            <input type="file" id="csvInput" style="display:none" accept=".csv" onchange="importCSV(event)">
+            <button class="btn-csv" onclick="exportCSV()">EXPORT CSV</button>
+        </div>
         <table class="log-table" id="logTable">
             <thead>
                 <tr><th onclick="sortLogs('id')"># ↕</th><th onclick="sortLogs('sit')">SITUATION ↕</th><th onclick="sortLogs('sc')">SCORE ↕</th><th onclick="sortLogs('wp')">HOME WP ↕</th><th onclick="sortLogs('chg')">ΔOFFENSE ↕</th><th onclick="sortLogs('li')">LI ↕</th></tr>
             </thead>
             <tbody id="logBody"></tbody>
         </table>
-        <div style="display: flex; gap: 5px; padding: 10px;">
-            <button class="btn-import" onclick="document.getElementById('csvInput').click()">IMPORT CSV</button>
-            <input type="file" id="csvInput" style="display:none" accept=".csv" onchange="importCSV(event)">
-            <button class="btn-csv" onclick="exportCSV()">EXPORT CSV</button>
-        </div>
     </div>
 </div>
 
@@ -306,4 +306,5 @@
 </script>
 </body>
 </html>
+
 
