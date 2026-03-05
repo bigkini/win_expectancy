@@ -1,8 +1,9 @@
 <!DOCTYPE html>
-<html lang="ko">
+<html 
+
 <head>
     <meta charset="UTF-8">
-    <title>Win Expectancy Analytics Terminal v4.9</title>
+    <title>Win Expectancy Analytics Terminal v5.0</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root {
@@ -16,7 +17,11 @@
         .scoreboard { background: #000; padding: 15px; border-radius: 8px; border: 1px solid #334155; margin-bottom: 10px; }
         .sb-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
         .sb-table th { color: #475569; font-size: 0.7rem; padding-bottom: 4px; }
-        .sb-team-name { color: #fff; font-size: 0.9rem; font-weight: bold; text-align: left; }
+        
+        /* [팀명 수정 스타일] */
+        .sb-team-name-input { background: transparent; border: none; color: #fff; font-size: 0.9rem; font-weight: bold; width: 100%; outline: none; border-bottom: 1px solid transparent; }
+        .sb-team-name-input:focus { border-bottom: 1px solid var(--accent); }
+        
         .inn-val { color: var(--led); text-align: center; font-size: 1.1rem; font-family: 'Courier New', monospace; font-weight: bold; }
         .sb-total { color: var(--accent); font-size: 1.5rem; font-weight: 900; border-left: 1px solid #334155; text-align: center; }
         .main-grid { display: grid; grid-template-columns: 320px 1fr; gap: 10px; align-items: start; }
@@ -50,7 +55,7 @@
 
 <div class="container">
     <div class="top-bar">
-        <span style="color: var(--accent); font-weight: 900; letter-spacing: 1px;">Win Expectancy Terminal v4.9</span>
+        <span style="color: var(--accent); font-weight: 900; letter-spacing: 1px;">Win Expectancy Terminal v5.0</span>
         <div style="display: flex; gap: 10px; align-items: center;">
             <label style="font-size: 0.75rem;">ENV(RE):</label>
             <input type="number" id="runEnv" value="4.5" step="0.1" class="env-input" oninput="calculate()">
@@ -64,14 +69,14 @@
             </thead>
             <tbody>
                 <tr id="sb-v-row">
-                    <td class="sb-team-name">VISITOR</td>
+                    <td><input type="text" id="vTeamName" value="VISITOR" class="sb-team-name-input"></td>
                     <td class="inn-val" data-inn="1">-</td><td class="inn-val" data-inn="2">-</td><td class="inn-val" data-inn="3">-</td>
                     <td class="inn-val" data-inn="4">-</td><td class="inn-val" data-inn="5">-</td><td class="inn-val" data-inn="6">-</td>
                     <td class="inn-val" data-inn="7">-</td><td class="inn-val" data-inn="8">-</td><td class="inn-val" data-inn="9">-</td>
                     <td class="inn-val" data-inn="10">-</td><td class="inn-val" data-inn="11">-</td><td class="sb-total" id="vTotal">0</td>
                 </tr>
                 <tr id="sb-h-row">
-                    <td class="sb-team-name">HOME</td>
+                    <td><input type="text" id="hTeamName" value="HOME" class="sb-team-name-input"></td>
                     <td class="inn-val" data-inn="1">-</td><td class="inn-val" data-inn="2">-</td><td class="inn-val" data-inn="3">-</td>
                     <td class="inn-val" data-inn="4">-</td><td class="inn-val" data-inn="5">-</td><td class="inn-val" data-inn="6">-</td>
                     <td class="inn-val" data-inn="7">-</td><td class="inn-val" data-inn="8">-</td><td class="inn-val" data-inn="9">-</td>
@@ -155,9 +160,7 @@
             if (i === curI) {
                 vCell.innerText = v;
                 hCell.innerText = (half === 'bottom') ? h : (hCell.innerText === '-' || hCell.innerText === '·' ? '·' : hCell.innerText);
-            } else if (i < curI) {
-                // 이전 이닝 값 유지 (import 시 채워짐)
-            } else {
+            } else if (i > curI) {
                 vCell.innerText = "-";
                 hCell.innerText = "-";
             }
@@ -178,7 +181,10 @@
 
     function getHomeWP(i, h, o, b, vs, hs, env) {
         let lookI = i, lookH = h, lookO = o, lookB = b;
-        if(lookO === 3) { lookO = 0; lookB = "0"; if(lookH === 'top') lookH = 'bottom'; else { lookI = lookI + 1; lookH = 'top'; } }
+        if(lookO === 3) {
+            lookO = 0; lookB = "0";
+            if(lookH === 'top') lookH = 'bottom'; else { lookI = lookI + 1; lookH = 'top'; }
+        }
         const envF = 4.5 / env;
         let diff = Math.round((hs - vs) * envF);
         diff = Math.max(-15, Math.min(15, diff));
@@ -189,18 +195,14 @@
     function calculate() {
         if(typeof bigTable === 'undefined') return;
         refreshScoreboard();
-        const vS = Number(document.getElementById('vTotal').innerText);
-        const hS = Number(document.getElementById('hTotal').innerText);
+        const vT = Number(document.getElementById('vTotal').innerText);
+        const hT = Number(document.getElementById('hTotal').innerText);
         const i = Number(document.getElementById('inning').value), h = document.getElementById('half').value;
         const o = Number(document.getElementById('outs').value), b = document.getElementById('bases').value, env = Number(document.getElementById('runEnv').value);
-        let homeWP = getHomeWP(i, h, o, b, vS, hS, env);
-        if (o === 3) {
-            let nI = i, nH = h; if(h === 'top') nH = 'bottom'; else nI++;
-            homeWP = getHomeWP(nI, nH, 0, "0", vS, hS, env);
-        }
+        const homeWP = getRawHomeWP(i, h, o, b, vT, hT, env);
         let li = 0;
         if (o < 3) {
-            const nO_WP = getHomeWP(i, h, o + 1, b, vS, hS, env);
+            const nO_WP = getRawHomeWP(i, h, o + 1, b, vT, hT, env);
             li = Math.abs(homeWP - nO_WP) / 0.027;
             document.getElementById('liDisplay').innerText = li.toFixed(2);
         } else { document.getElementById('liDisplay').innerText = "---"; }
@@ -212,12 +214,12 @@
         const o = document.getElementById('outs').value, b = document.getElementById('bases').value;
         const vT = Number(document.getElementById('vTotal').innerText);
         const hT = Number(document.getElementById('hTotal').innerText);
-        const currentHomeWP = parseFloat(document.getElementById('probDisplay').innerText);
+        const cWP = parseFloat(document.getElementById('probDisplay').innerText);
         const li = document.getElementById('liDisplay').innerText;
         const m = document.getElementById('memo').value.trim();
         const sitStr = `${i}_${h==='top'?'T':'B'}_${o}_${b}`;
-        let deltaOffense = logsData.length > 0 ? (h === 'top' ? -(currentHomeWP - logsData[logsData.length-1].homeWP) : (currentHomeWP - logsData[logsData.length-1].homeWP)) : 0;
-        logsData.push({ id: logsData.length + 1, sit: sitStr, sc: `${vT}:${hT}`, homeWP: currentHomeWP, chg: deltaOffense, li, memo: m });
+        let dOff = logsData.length > 0 ? (h === 'top' ? -(cWP - logsData[logsData.length-1].homeWP) : (cWP - logsData[logsData.length-1].homeWP)) : 0;
+        logsData.push({ id: logsData.length + 1, sit: sitStr, sc: `${vT}:${hT}`, homeWP: cWP, chg: dOff, li, memo: m });
         updateChart();
         if(Number(o) === 3) {
             if(h === 'top') { document.getElementById('half').value = 'bottom'; document.getElementById('curHScore').value = "0"; }
@@ -256,7 +258,6 @@
         link.download = `WinExp_Log_${new Date().toISOString().slice(0,10)}.csv`; link.click();
     }
 
-    // [로직 수정 완료] 누적 총점에서 차감을 통해 이닝별 득점을 복구하여 전광판에 표시
     function importCSV(event) {
         const file = event.target.files[0]; if (!file) return;
         const reader = new FileReader();
@@ -265,37 +266,26 @@
             const lines = text.split('\n').filter(l => l.trim() !== "");
             const newLogs = [];
             document.querySelectorAll('.inn-val').forEach(el => el.innerText = "-");
-            
-            let lastVTotal = 0, lastHTotal = 0;
-
+            let lVT = 0, lHT = 0;
             for (let i = 1; i < lines.length; i++) {
                 const cols = lines[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
                 if (cols.length < 7) continue;
                 const log = { id: parseInt(cols[0]), sit: cols[1], sc: cols[2], homeWP: parseFloat(cols[3]), chg: parseFloat(cols[4]), li: cols[5], memo: cols[6].replace(/^"|"$/g, '').replace(/""/g, '"') };
                 newLogs.push(log);
-
                 const [inn, half] = log.sit.split('_');
                 const [vTAt, hTAt] = log.sc.split(':').map(Number);
-                
-                if (half === 'T') {
-                    const diffV = vTAt - lastVTotal;
-                    document.querySelector(`#sb-v-row [data-inn="${inn}"]`).innerText = diffV;
-                    lastVTotal = vTAt;
-                } else {
-                    const diffH = hTAt - lastHTotal;
-                    document.querySelector(`#sb-h-row [data-inn="${inn}"]`).innerText = diffH;
-                    lastHTotal = hTAt;
-                }
+                if (half === 'T') { document.querySelector(`#sb-v-row [data-inn="${inn}"]`).innerText = vTAt - lVT; lVT = vTAt; } 
+                else { document.querySelector(`#sb-h-row [data-inn="${inn}"]`).innerText = hTAt - lHT; lHT = hTAt; }
             }
             if (newLogs.length > 0) {
                 logsData = newLogs;
                 const last = logsData[logsData.length - 1];
                 const [inn, half, out, base] = last.sit.split('_');
-                document.getElementById('curVScore').value = document.querySelector(`#sb-v-row [data-inn="${inn}"]`).innerText;
-                document.getElementById('curHScore').value = document.querySelector(`#sb-h-row [data-inn="${inn}"]`).innerText;
+                document.getElementById('curVScore').value = document.querySelector(`#sb-v-row [data-inn="${inn}"]`).innerText === '·' ? 0 : document.querySelector(`#sb-v-row [data-inn="${inn}"]`).innerText;
+                document.getElementById('curHScore').value = document.querySelector(`#sb-h-row [data-inn="${inn}"]`).innerText === '·' ? 0 : document.querySelector(`#sb-h-row [data-inn="${inn}"]`).innerText;
                 document.getElementById('inning').value = inn; document.getElementById('half').value = (half === 'T' ? 'top' : 'bottom');
                 document.getElementById('outs').value = out; document.getElementById('bases').value = base;
-                renderLogs(); updateChart(); calculate();
+                renderLogs(); updateChart(); calculate(); 
             }
         };
         reader.readAsText(file);
