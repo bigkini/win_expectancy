@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>Win Expectancy Analytics Terminal v5.2</title>
+    <title>Win Expectancy Analytics Terminal v5.4</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root {
@@ -51,7 +51,7 @@
 
 <div class="container">
     <div class="top-bar">
-        <span style="color: var(--accent); font-weight: 900; letter-spacing: 1px;">Win Expectancy Terminal v5.2</span>
+        <span style="color: var(--accent); font-weight: 900; letter-spacing: 1px;">Win Expectancy Terminal v5.4</span>
         <div style="display: flex; gap: 10px; align-items: center;">
             <label style="font-size: 0.75rem;">ENV(RE):</label>
             <input type="number" id="runEnv" value="4.5" step="0.1" class="env-input" oninput="calculate()">
@@ -85,8 +85,8 @@
     <div class="main-grid">
         <div class="card">
             <div class="field-row">
-                <div><label style="color: var(--blue);">VISITOR SCORE</label><div class="score-ctrl"><button class="btn-step" onclick="changeScore('curVScore', -1)">-</button><input type="number" id="curVScore" value="0" class="score-display" readonly><button class="btn-step" onclick="changeScore('curVScore', 1)">+</button></div></div>
-                <div><label style="color: var(--red);">HOME SCORE</label><div class="score-ctrl"><button class="btn-step" onclick="changeScore('curHScore', -1)">-</button><input type="number" id="curHScore" value="0" class="score-display" readonly><button class="btn-step" onclick="changeScore('curHScore', 1)">+</button></div></div>
+                <div><label style="color: var(--blue);">VISITOR SCORE (TOTAL)</label><div class="score-ctrl"><button class="btn-step" onclick="changeScore('curVScore', -1)">-</button><input type="number" id="curVScore" value="0" class="score-display" readonly><button class="btn-step" onclick="changeScore('curVScore', 1)">+</button></div></div>
+                <div><label style="color: var(--red);">HOME SCORE (TOTAL)</label><div class="score-ctrl"><button class="btn-step" onclick="changeScore('curHScore', -1)">-</button><input type="number" id="curHScore" value="0" class="score-display" readonly><button class="btn-step" onclick="changeScore('curHScore', 1)">+</button></div></div>
             </div>
             <div class="field-row">
                 <div><label>INNING</label><select id="inning" onchange="calculate()"><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10</option><option value="11">11</option></select></div>
@@ -112,6 +112,7 @@
             <input type="file" id="csvInput" style="display:none" accept=".csv" onchange="importCSV(event)">
             <button class="btn-csv" onclick="exportCSV()">EXPORT CSV</button>
         </div>
+
         <table class="log-table" id="logTable">
             <thead>
                 <tr><th onclick="sortLogs('id')"># ↕</th><th onclick="sortLogs('sit')">SITUATION ↕</th><th onclick="sortLogs('sc')">SCORE ↕</th><th onclick="sortLogs('wp')">HOME WP ↕</th><th onclick="sortLogs('chg')">ΔOFFENSE ↕</th><th onclick="sortLogs('li')">LI ↕</th></tr>
@@ -145,14 +146,12 @@
         calculate();
     }
 
-    // [전광판 갱신 로직] 현재 총점에서 이전 이닝 점수를 뺀 '이닝 득점'을 칸에 표시
     function refreshScoreboard() {
         const curVTotal = Number(document.getElementById('curVScore').value);
         const curHTotal = Number(document.getElementById('curHScore').value);
         const curI = Number(document.getElementById('inning').value);
         const half = document.getElementById('half').value;
 
-        // 이전 이닝들의 합계를 구함
         let prevVSum = 0, prevHSum = 0;
         for(let i=1; i<curI; i++) {
             const vVal = document.querySelector(`#sb-v-row [data-inn="${i}"]`).innerText;
@@ -161,15 +160,12 @@
             if(hVal !== '-' && hVal !== '·') prevHSum += Number(hVal);
         }
 
-        const curInningV = curVTotal - prevVSum;
-        const curInningH = curHTotal - prevHSum;
-
         for(let i=1; i<=11; i++) {
             const vCell = document.querySelector(`#sb-v-row [data-inn="${i}"]`);
             const hCell = document.querySelector(`#sb-h-row [data-inn="${i}"]`);
             if (i === curI) {
-                vCell.innerText = curInningV;
-                hCell.innerText = (half === 'bottom') ? curInningH : (hCell.innerText === '-' || hCell.innerText === '·' ? '·' : hCell.innerText);
+                vCell.innerText = curVTotal - prevVSum;
+                hCell.innerText = (half === 'bottom') ? (curHTotal - prevHSum) : (hCell.innerText === '-' || hCell.innerText === '·' ? '·' : hCell.innerText);
             } else if (i > curI) {
                 vCell.innerText = "-";
                 hCell.innerText = "-";
@@ -259,6 +255,7 @@
         link.download = `WinExp_Log_${new Date().toISOString().slice(0,10)}.csv`; link.click();
     }
 
+    // [로직 대폭 개선] 하프 이닝별 최종 로그만 추출하여 전광판 복원
     function importCSV(event) {
         const file = event.target.files[0]; if (!file) return;
         const reader = new FileReader();
@@ -266,27 +263,56 @@
             const text = e.target.result;
             const lines = text.split('\n').filter(l => l.trim() !== "");
             const newLogs = [];
+            
+            // 전광판 초기화
             document.querySelectorAll('.inn-val').forEach(el => el.innerText = "-");
-            let lVT = 0, lHT = 0;
+
+            // 1. 하프 이닝별 마지막 총점을 저장할 객체
+            const halfInningScores = {}; 
+
             for (let i = 1; i < lines.length; i++) {
                 const cols = lines[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
                 if (cols.length < 7) continue;
                 const log = { id: parseInt(cols[0]), sit: cols[1], sc: cols[2], homeWP: parseFloat(cols[3]), chg: parseFloat(cols[4]), li: cols[5], memo: cols[6].replace(/^"|"$/g, '').replace(/""/g, '"') };
                 newLogs.push(log);
+
                 const [inn, half] = log.sit.split('_');
-                const [vTAt, hTAt] = log.sc.split(':').map(Number);
-                if (half === 'T') { document.querySelector(`#sb-v-row [data-inn="${inn}"]`).innerText = vTAt - lVT; lVT = vTAt; } 
-                else { document.querySelector(`#sb-h-row [data-inn="${inn}"]`).innerText = hTAt - lHT; lHT = hTAt; }
+                const key = `${inn}_${half}`;
+                // 로그를 순서대로 읽으므로, 같은 하프이닝이면 덮어씌워져 결국 '마지막 총점'이 남음
+                halfInningScores[key] = log.sc.split(':').map(Number);
             }
+
+            // 2. 하프 이닝별 최종 데이터를 기반으로 전광판 칸 채우기
+            let lastV = 0, lastH = 0;
+            for(let inn=1; inn<=11; inn++) {
+                const topKey = `${inn}_T`, botKey = `${inn}_B`;
+                
+                if (halfInningScores[topKey]) {
+                    const [vT, hT] = halfInningScores[topKey];
+                    document.querySelector(`#sb-v-row [data-inn="${inn}"]`).innerText = vT - lastV;
+                    lastV = vT;
+                }
+                if (halfInningScores[botKey]) {
+                    const [vB, hB] = halfInningScores[botKey];
+                    document.querySelector(`#sb-h-row [data-inn="${inn}"]`).innerText = hB - lastH;
+                    lastH = hB;
+                }
+            }
+
             if (newLogs.length > 0) {
                 logsData = newLogs;
                 const last = logsData[logsData.length - 1];
-                const [vS, hS] = last.sc.split(':').map(Number);
+                const [vT, hT] = last.sc.split(':').map(Number);
                 const [inn, half, out, base] = last.sit.split('_');
-                document.getElementById('curVScore').value = vS;
-                document.getElementById('curHScore').value = hS;
-                document.getElementById('inning').value = inn; document.getElementById('half').value = (half === 'T' ? 'top' : 'bottom');
-                document.getElementById('outs').value = out; document.getElementById('bases').value = base;
+                
+                // 입력창을 파일의 최종 누적 총점으로 동기화
+                document.getElementById('curVScore').value = vT;
+                document.getElementById('curHScore').value = hT;
+                document.getElementById('inning').value = inn;
+                document.getElementById('half').value = (half === 'T' ? 'top' : 'bottom');
+                document.getElementById('outs').value = out;
+                document.getElementById('bases').value = base;
+                
                 renderLogs(); updateChart(); calculate(); 
             }
         };
@@ -306,5 +332,3 @@
 </script>
 </body>
 </html>
-
-
