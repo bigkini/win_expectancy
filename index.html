@@ -2,68 +2,51 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>WinExp Pro - Analytics Terminal v4.5</title>
+    <title>WinExp Pro - Analytics Terminal v4.4</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root {
             --dark: #0f172a; --panel: #1e293b; --accent: #fbbf24;
-            --blue: #3b82f6; --red: #ef4444; --gray: #94a3b8; --led: #fde047; --green: #10b981;
+            --blue: #3b82f6; --red: #ef4444; --gray: #94a3b8; --led: #fde047;
         }
         body { font-family: 'Pretendard', sans-serif; background: #0f172a; margin: 0; padding: 10px; color: #e2e8f0; }
-        .container { max-width: 1000px; margin: 0 auto; }
-        
+        .container { max-width: 950px; margin: 0 auto; }
         .top-bar { display: flex; justify-content: space-between; align-items: center; padding: 8px 15px; background: #1e293b; border-radius: 6px; margin-bottom: 8px; }
         .env-input { width: 45px; background: #0f172a; color: var(--accent); border: 1px solid #334155; border-radius: 4px; padding: 2px 5px; text-align: center; font-weight: bold; }
-
         .scoreboard { background: #000; padding: 15px; border-radius: 8px; border: 1px solid #334155; margin-bottom: 10px; }
         .sb-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
         .sb-table th { color: #475569; font-size: 0.7rem; padding-bottom: 4px; }
         .sb-team-name { color: #fff; font-size: 0.9rem; font-weight: bold; text-align: left; }
         .inn-val { color: var(--led); text-align: center; font-size: 1.1rem; font-family: 'Courier New', monospace; font-weight: bold; }
         .sb-total { color: var(--accent); font-size: 1.5rem; font-weight: 900; border-left: 1px solid #334155; text-align: center; }
-
-        /* [그리드 조정] 작업 동선 최적화 */
-        .main-grid { display: grid; grid-template-columns: 340px 1fr; gap: 12px; align-items: start; }
-        .card { background: #1e293b; padding: 18px; border-radius: 8px; border: 1px solid #334155; }
-
-        /* 입력 폼 */
-        .section-label { font-size: 0.7rem; color: var(--accent); letter-spacing: 1px; margin-bottom: 8px; display: block; font-weight: 900; }
+        .main-grid { display: grid; grid-template-columns: 320px 1fr; gap: 10px; align-items: start; }
+        .card { background: #1e293b; padding: 15px; border-radius: 8px; border: 1px solid #334155; }
         .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
         label { display: block; font-size: 0.75rem; color: var(--gray); margin-bottom: 4px; font-weight: bold; }
-        select, textarea { width: 100%; padding: 8px; background: #0f172a; color: #fff; border: 1px solid #334155; border-radius: 4px; font-size: 0.9rem; outline: none; box-sizing: border-box; }
-        
+        select, textarea { width: 100%; padding: 8px; background: #0f172a; color: #fff; border: 1px solid #334155; border-radius: 4px; font-size: 0.95rem; outline: none; }
         .score-ctrl { display: flex; align-items: center; gap: 5px; background: rgba(255,255,255,0.05); padding: 5px; border-radius: 6px; }
         .score-display { width: 100%; background: transparent; color: var(--accent); border: none; font-size: 1.8rem; font-weight: 900; text-align: center; outline: none; }
         .btn-step { width: 30px; height: 35px; background: #334155; color: white; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; }
-
         .live-stats { margin-top: 15px; padding-top: 15px; border-top: 1px solid #334155; }
         .stat-value { font-size: 2.2rem; font-weight: 900; line-height: 1.2; }
         .val-wp { color: var(--red); }
-        
-        /* 버튼 그룹 */
-        .btn-group { display: flex; flex-direction: column; gap: 8px; margin-top: 15px; }
-        button { padding: 12px; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 0.85rem; transition: 0.2s; }
+        .btn-group { display: flex; gap: 8px; margin-top: 10px; }
+        button { flex: 1; padding: 10px; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 0.9rem; }
         .btn-save { background: var(--blue); color: white; }
-        .btn-undo { background: #334155; color: #94a3b8; }
-        .btn-csv { background: var(--green); color: white; }
-        .btn-import { background: #6366f1; color: white; }
-        button:hover { filter: brightness(1.2); }
-
-        .chart-card { min-height: 400px; padding: 15px; }
-        .log-section { margin-top: 12px; background: #1e293b; border-radius: 8px; border: 1px solid #334155; overflow: hidden; }
+        .btn-csv { background: #10b981; color: white; margin-top: 10px; }
+        .btn-import { background: #6366f1; color: white; margin-top: 10px; }
+        .log-section { margin-top: 10px; background: #1e293b; border-radius: 8px; overflow: hidden; border: 1px solid #334155; }
         .log-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
         .log-table th { background: #0f172a; color: var(--gray); padding: 12px; text-align: left; cursor: pointer; }
         .log-table td { padding: 10px 12px; border-bottom: 1px solid #334155; }
         .memo-row td { background: rgba(15, 23, 42, 0.4); padding: 5px 12px 10px 40px; color: var(--gray); font-style: italic; border-bottom: 1px solid #334155; }
-        .change-plus { color: #4ade80; font-weight: bold; }
-        .change-minus { color: #f87171; font-weight: bold; }
     </style>
 </head>
 <body>
 
 <div class="container">
     <div class="top-bar">
-        <span style="color: var(--accent); font-weight: 900; letter-spacing: 1px;">WIN-EXP TERMINAL v4.5</span>
+        <span style="color: var(--accent); font-weight: 900; letter-spacing: 1px;">WIN-EXP TERMINAL v4.4</span>
         <div style="display: flex; gap: 10px; align-items: center;"><label style="font-size: 0.75rem;">ENV(RE):</label><input type="number" id="runEnv" value="4.5" step="0.1" class="env-input" oninput="calculate()"></div>
     </div>
 
@@ -79,11 +62,6 @@
 
     <div class="main-grid">
         <div class="card">
-            <span class="section-label">01. DATA LOAD</span>
-            <button class="btn-import" style="width:100%; margin-bottom:20px;" onclick="document.getElementById('csvInput').click()">IMPORT CSV FILE</button>
-            <input type="file" id="csvInput" style="display:none" accept=".csv" onchange="importCSV(event)">
-
-            <span class="section-label">02. LIVE INPUT</span>
             <div class="field-row">
                 <div><label style="color: var(--blue);">VISITOR SCORE</label><div class="score-ctrl"><button class="btn-step" onclick="changeScore('curVScore', -1)">-</button><input type="number" id="curVScore" value="0" class="score-display" readonly><button class="btn-step" onclick="changeScore('curVScore', 1)">+</button></div></div>
                 <div><label style="color: var(--red);">HOME SCORE</label><div class="score-ctrl"><button class="btn-step" onclick="changeScore('curHScore', -1)">-</button><input type="number" id="curHScore" value="0" class="score-display" readonly><button class="btn-step" onclick="changeScore('curHScore', 1)">+</button></div></div>
@@ -96,25 +74,14 @@
                 <div><label>OUTS</label><select id="outs" onchange="calculate()"><option value="0">0 Out</option><option value="1">1 Out</option><option value="2">2 Out</option><option value="3">3 Out</option></select></div>
                 <div><label>RUNNERS</label><select id="bases" onchange="calculate()"><option value="0">None</option><option value="1">1st</option><option value="2">2nd</option><option value="3">3rd</option><option value="12">1st, 2nd</option><option value="13">1st, 3rd</option><option value="23">2nd, 3rd</option><option value="123">Loaded</option></select></div>
             </div>
-            <textarea id="memo" rows="2" placeholder="ANALYSIS NOTE..."></textarea>
-
-            <span class="section-label" style="margin-top:20px;">03. ACTION</span>
-            <div class="btn-group">
-                <button class="btn-save" onclick="addLog()">LOG EVENT (SAVE)</button>
-                <button class="btn-undo" onclick="undo()">UNDO LAST ACTION</button>
-                <button class="btn-csv" onclick="exportCSV()">EXPORT FINAL CSV</button>
-            </div>
-
+            <textarea id="memo" rows="2" placeholder="MEMO..."></textarea>
+            <div class="btn-group"><button class="btn-save" onclick="addLog()">LOG EVENT</button><button class="btn-undo" onclick="undo()">UNDO</button></div>
             <div class="live-stats">
                 <div class="stat-item"><div class="stat-label">HOME WIN PROB</div><div class="stat-value val-wp" id="probDisplay">50.0%</div></div>
                 <div class="stat-item"><div class="stat-label">LEVERAGE INDEX</div><div class="stat-value val-li" id="liDisplay">0.81</div></div>
             </div>
         </div>
-
-        <div class="card chart-card">
-            <span class="section-label">04. PROBABILITY TREND</span>
-            <canvas id="wpChart"></canvas>
-        </div>
+        <div class="card chart-card"><canvas id="wpChart"></canvas></div>
     </div>
 
     <div class="log-section">
@@ -122,6 +89,7 @@
             <thead><tr><th onclick="sortLogs('id')"># ↕</th><th onclick="sortLogs('sit')">SITUATION ↕</th><th onclick="sortLogs('sc')">SCORE ↕</th><th onclick="sortLogs('wp')">HOME WP ↕</th><th onclick="sortLogs('chg')">ΔOFFENSE ↕</th><th onclick="sortLogs('li')">LI ↕</th></tr></thead>
             <tbody id="logBody"></tbody>
         </table>
+        <div style="display: flex; gap: 5px; padding: 10px;"><button class="btn-csv" onclick="exportCSV()">EXPORT CSV</button><button class="btn-import" onclick="document.getElementById('csvInput').click()">IMPORT CSV</button><input type="file" id="csvInput" style="display:none" accept=".csv" onchange="importCSV(event)"></div>
     </div>
 </div>
 
@@ -136,7 +104,7 @@
         const ctx = document.getElementById('wpChart').getContext('2d');
         wpChart = new Chart(ctx, {
             type: 'line',
-            data: { labels: ['0'], datasets: [{ label: 'HOME WP (%)', data: [50], borderColor: '#ef4444', backgroundColor: 'rgba(239, 68, 68, 0.1)', tension: 0.1, fill: true, pointRadius: 3, pointHoverRadius: 6 }] },
+            data: { labels: ['0'], datasets: [{ label: 'HOME WP (%)', data: [50], borderColor: '#ef4444', backgroundColor: 'rgba(239, 68, 68, 0.1)', tension: 0.1, fill: true, pointRadius: 3 }] },
             options: { responsive: true, maintainAspectRatio: false, scales: { y: { min: 0, max: 100, grid: { color: '#334155' } }, x: { grid: { display: false } } }, plugins: { legend: { display: false } } }
         });
     }
@@ -154,9 +122,16 @@
         const curH = Number(document.getElementById('curHScore').value);
         const curI = Number(document.getElementById('inning').value);
         const half = document.getElementById('half').value;
+
+        // 현재 선택된 이닝의 점수를 실시간 반영
         document.querySelector(`#sb-v-row [data-inn="${curI}"]`).innerText = curV;
-        if (half === 'bottom') document.querySelector(`#sb-h-row [data-inn="${curI}"]`).innerText = curH;
-        else document.querySelector(`#sb-h-row [data-inn="${curI}"]`).innerText = "0";
+        if (half === 'bottom') {
+            document.querySelector(`#sb-h-row [data-inn="${curI}"]`).innerText = curH;
+        } else {
+            // TOP일 때는 BOT 점수는 아직 0이거나 이전 기록 상태여야 함 (여기선 0으로 표시)
+            // 단, 불러오기 시에는 이미 채워져 있을 것이므로 덮어씌우지 않도록 주의가 필요하지만
+            // 여기서는 '입력' 시점의 로직이므로 0으로 두는 것이 맞음
+        }
 
         let vSum = 0, hSum = 0;
         document.querySelectorAll('.sb-table .inn-val').forEach(el => {
@@ -184,6 +159,7 @@
         const hT = Number(document.getElementById('hTotal').innerText);
         const i = Number(document.getElementById('inning').value), h = document.getElementById('half').value;
         const o = Number(document.getElementById('outs').value), b = document.getElementById('bases').value, env = Number(document.getElementById('runEnv').value);
+        
         let homeWP = getRawHomeWP(i, h, o, b, vT, hT, env);
         if (o === 3) {
             let nI = i, nH = h; if(h === 'top') nH = 'bottom'; else nI++;
@@ -207,12 +183,20 @@
         const li = document.getElementById('liDisplay').innerText;
         const m = document.getElementById('memo').value.trim();
         const sitStr = `${i}_${h==='top'?'T':'B'}_${o}_${b}`;
+
         let dOff = logsData.length > 0 ? (h === 'top' ? -(cWP - logsData[logsData.length-1].homeWP) : (cWP - logsData[logsData.length-1].homeWP)) : 0;
         logsData.push({ id: logsData.length + 1, sit: sitStr, sc: `${vT}:${hT}`, homeWP: cWP, chg: dOff, li, memo: m });
         updateChart();
+
         if(Number(o) === 3) {
-            if(h === 'top') { document.getElementById('half').value = 'bottom'; document.getElementById('curHScore').value = "0"; }
-            else { document.getElementById('inning').value = Math.min(11, Number(i) + 1); document.getElementById('half').value = 'top'; document.getElementById('curVScore').value = "0"; }
+            if(h === 'top') {
+                document.getElementById('half').value = 'bottom';
+                document.getElementById('curHScore').value = "0";
+            } else {
+                document.getElementById('inning').value = Math.min(11, Number(i) + 1);
+                document.getElementById('half').value = 'top';
+                document.getElementById('curVScore').value = "0";
+            }
             document.getElementById('outs').value = "0"; document.getElementById('bases').value = "0";
         }
         saveState(true); renderLogs(); calculate(); document.getElementById('memo').value = '';
@@ -247,31 +231,57 @@
         link.download = `WinExp_Log_${new Date().toISOString().slice(0,10)}.csv`; link.click();
     }
 
+    // [불러오기 시 스코어보드 복구 기능 핵심]
     function importCSV(event) {
         const file = event.target.files[0]; if (!file) return;
         const reader = new FileReader();
         reader.onload = function(e) {
             const lines = e.target.result.split('\n').filter(l => l.trim() !== "");
             const newLogs = [];
+            
+            // 전광판 초기화
             document.querySelectorAll('.inn-val').forEach(el => el.innerText = "0");
+
             for (let i = 1; i < lines.length; i++) {
                 const cols = lines[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
                 if (cols.length < 7) continue;
+                
                 const log = { id: parseInt(cols[0]), sit: cols[1], sc: cols[2], homeWP: parseFloat(cols[3]), chg: parseFloat(cols[4]), li: cols[5], memo: cols[6].replace(/^"|"$/g, '').replace(/""/g, '"') };
                 newLogs.push(log);
+
+                // [복구 로직] 각 로그의 상황을 읽어 전광판의 해당 칸을 업데이트
                 const [inn, half] = log.sit.split('_');
                 const [vT, hT] = log.sc.split(':').map(Number);
-                if (half === 'T') document.querySelector(`#sb-v-row [data-inn="${inn}"]`).innerText = vT;
-                else { document.querySelector(`#sb-v-row [data-inn="${inn}"]`).innerText = vT; document.querySelector(`#sb-h-row [data-inn="${inn}"]`).innerText = hT; }
+                
+                // 해당 이닝의 '누적 점수'가 아닌 '해당 하프이닝의 점수'를 찾아야 함
+                // 여기서는 CSV에 각 이닝 점수가 따로 없으므로, 이전 로그와의 차이를 통해 역산하거나 
+                // 단순히 해당 시점의 총점을 해당 칸에 덮어쓰는 방식으로 구현 (v4.3의 직관적 방식 유지)
+                if (half === 'T') {
+                    document.querySelector(`#sb-v-row [data-inn="${inn}"]`).innerText = vT;
+                } else {
+                    document.querySelector(`#sb-v-row [data-inn="${inn}"]`).innerText = vT;
+                    document.querySelector(`#sb-h-row [data-inn="${inn}"]`).innerText = hT;
+                }
             }
+            
             if (newLogs.length > 0) {
-                logsData = newLogs;
+                logsData.length = 0; logsData.push(...newLogs);
                 const last = logsData[logsData.length - 1];
+                const [vT, hT] = last.sc.split(':').map(Number);
                 const [inn, half, out, base] = last.sit.split('_');
-                document.getElementById('curVScore').value = document.querySelector(`#sb-v-row [data-inn="${inn}"]`).innerText;
-                document.getElementById('curHScore').value = document.querySelector(`#sb-h-row [data-inn="${inn}"]`).innerText;
-                document.getElementById('inning').value = inn; document.getElementById('half').value = (half === 'T' ? 'top' : 'bottom');
-                document.getElementById('outs').value = out; document.getElementById('bases').value = base;
+                
+                // 입력창 세팅: 마지막 상황의 '해당 이닝 점수'를 가져와야 함
+                // 이 도구의 특성상 '총점'이 아닌 '이닝 점수'를 입력창에 넣으므로 전광판의 해당 칸 값을 가져옴
+                const vCellVal = document.querySelector(`#sb-v-row [data-inn="${inn}"]`).innerText;
+                const hCellVal = document.querySelector(`#sb-h-row [data-inn="${inn}"]`).innerText;
+                
+                document.getElementById('curVScore').value = vCellVal;
+                document.getElementById('curHScore').value = hCellVal;
+                document.getElementById('inning').value = inn;
+                document.getElementById('half').value = (half === 'T' ? 'top' : 'bottom');
+                document.getElementById('outs').value = out;
+                document.getElementById('bases').value = base;
+                
                 renderLogs(); updateChart(); calculate();
             }
         };
@@ -280,7 +290,17 @@
 
     function sortLogs(key) { if (currentSort.key === key) currentSort.dir *= -1; else { currentSort.key = key; currentSort.dir = 1; } renderLogs(); }
     function saveState(isLog = false) { historyStack.push(JSON.stringify({ vS: document.getElementById('curVScore').value, hS: document.getElementById('curHScore').value, inn: document.getElementById('inning').value, half: document.getElementById('half').value, outs: document.getElementById('outs').value, bases: document.getElementById('bases').value, env: document.getElementById('runEnv').value, isLog })); }
-    function undo() { if(logsData.length <= 1 && historyStack.length <= 2) return; const last = JSON.parse(historyStack.pop()); if(last.isLog) { logsData.pop(); renderLogs(); updateChart(); } const prev = JSON.parse(historyStack[historyStack.length - 1]); document.getElementById('curVScore').value = prev.vS; document.getElementById('curHScore').value = prev.hS; document.getElementById('inning').value = prev.inn; document.getElementById('half').value = prev.half; document.getElementById('outs').value = prev.outs; document.getElementById('bases').value = prev.bases; document.getElementById('runEnv').value = prev.env; calculate(); }
+    
+    function undo() {
+        if(logsData.length <= 1 && historyStack.length <= 2) return;
+        const last = JSON.parse(historyStack.pop());
+        if(last.isLog) { logsData.pop(); renderLogs(); updateChart(); }
+        const prev = JSON.parse(historyStack[historyStack.length - 1]);
+        document.getElementById('curVScore').value = prev.vS; document.getElementById('curHScore').value = prev.hS;
+        document.getElementById('inning').value = prev.inn; document.getElementById('half').value = prev.half;
+        document.getElementById('outs').value = prev.outs; document.getElementById('bases').value = prev.bases;
+        document.getElementById('runEnv').value = prev.env; calculate();
+    }
 
     document.querySelectorAll('select').forEach(el => el.addEventListener('change', calculate));
     window.onload = () => { initChart(); calculate(); saveState(); logsData.push({ id: 1, sit: "1_T_0_0", sc: "0:0", homeWP: 50.0, chg: 0, li: "0.81", memo: "GAME START" }); renderLogs(); };
