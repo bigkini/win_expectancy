@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>Win Expectancy Analytics Terminal v4.1</title>
+    <title>Win Expectancy Analytics Terminal v4.9</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root {
@@ -50,7 +50,7 @@
 
 <div class="container">
     <div class="top-bar">
-        <span style="color: var(--accent); font-weight: 900; letter-spacing: 1px;">Win Expectancy Terminal v4.1</span>
+        <span style="color: var(--accent); font-weight: 900; letter-spacing: 1px;">Win Expectancy Terminal v4.9</span>
         <div style="display: flex; gap: 10px; align-items: center;">
             <label style="font-size: 0.75rem;">ENV(RE):</label>
             <input type="number" id="runEnv" value="4.5" step="0.1" class="env-input" oninput="calculate()">
@@ -65,17 +65,17 @@
             <tbody>
                 <tr id="sb-v-row">
                     <td class="sb-team-name">VISITOR</td>
-                    <td class="inn-val" data-inn="1">-</td><td class="inn-val" data-inn="2">-</td><td class="inn-val" data-inn="3">-</td>
-                    <td class="inn-val" data-inn="4">-</td><td class="inn-val" data-inn="5">-</td><td class="inn-val" data-inn="6">-</td>
-                    <td class="inn-val" data-inn="7">-</td><td class="inn-val" data-inn="8">-</td><td class="inn-val" data-inn="9">-</td>
-                    <td class="inn-val" data-inn="10">-</td><td class="inn-val" data-inn="11">-</td><td class="sb-total" id="vTotal">0</td>
+                    <td class="inn-val" data-inn="1">0</td><td class="inn-val" data-inn="2">0</td><td class="inn-val" data-inn="3">0</td>
+                    <td class="inn-val" data-inn="4">0</td><td class="inn-val" data-inn="5">0</td><td class="inn-val" data-inn="6">0</td>
+                    <td class="inn-val" data-inn="7">0</td><td class="inn-val" data-inn="8">0</td><td class="inn-val" data-inn="9">0</td>
+                    <td class="inn-val" data-inn="10">0</td><td class="inn-val" data-inn="11">0</td><td class="sb-total" id="vTotal">0</td>
                 </tr>
                 <tr id="sb-h-row">
                     <td class="sb-team-name">HOME</td>
-                    <td class="inn-val" data-inn="1">-</td><td class="inn-val" data-inn="2">-</td><td class="inn-val" data-inn="3">-</td>
-                    <td class="inn-val" data-inn="4">-</td><td class="inn-val" data-inn="5">-</td><td class="inn-val" data-inn="6">-</td>
-                    <td class="inn-val" data-inn="7">-</td><td class="inn-val" data-inn="8">-</td><td class="inn-val" data-inn="9">-</td>
-                    <td class="inn-val" data-inn="10">-</td><td class="inn-val" data-inn="11">-</td><td class="sb-total" id="hTotal">0</td>
+                    <td class="inn-val" data-inn="1">0</td><td class="inn-val" data-inn="2">0</td><td class="inn-val" data-inn="3">0</td>
+                    <td class="inn-val" data-inn="4">0</td><td class="inn-val" data-inn="5">0</td><td class="inn-val" data-inn="6">0</td>
+                    <td class="inn-val" data-inn="7">0</td><td class="inn-val" data-inn="8">0</td><td class="inn-val" data-inn="9">0</td>
+                    <td class="inn-val" data-inn="10">0</td><td class="inn-val" data-inn="11">0</td><td class="sb-total" id="hTotal">0</td>
                 </tr>
             </tbody>
         </table>
@@ -150,13 +150,11 @@
         const curI = Number(document.getElementById('inning').value);
         const half = document.getElementById('half').value;
         
-        // 현재 이닝 점수 실시간 반영
         const vCell = document.querySelector(`#sb-v-row [data-inn="${curI}"]`);
         const hCell = document.querySelector(`#sb-h-row [data-inn="${curI}"]`);
         if(vCell) vCell.innerText = v;
-        if(hCell) hCell.innerText = (half === 'bottom') ? h : (hCell.innerText === '-' ? '0' : hCell.innerText);
+        if(hCell) hCell.innerText = (half === 'bottom') ? h : hCell.innerText;
 
-        // 전체 합산
         let vSum = 0, hSum = 0;
         document.querySelectorAll('.inn-val').forEach(td => {
             const val = Number(td.innerText) || 0;
@@ -183,14 +181,14 @@
     function calculate() {
         if(typeof bigTable === 'undefined') return;
         refreshScoreboard();
-        const vS = Number(document.getElementById('vTotal').innerText);
-        const hS = Number(document.getElementById('hTotal').innerText);
+        const vTotal = Number(document.getElementById('vTotal').innerText);
+        const hTotal = Number(document.getElementById('hTotal').innerText);
         const i = Number(document.getElementById('inning').value), h = document.getElementById('half').value;
         const o = Number(document.getElementById('outs').value), b = document.getElementById('bases').value, env = Number(document.getElementById('runEnv').value);
-        const homeWP = getRawHomeWP(i, h, o, b, vS, hS, env);
+        const homeWP = getRawHomeWP(i, h, o, b, vTotal, hTotal, env);
         let li = 0;
         if (o < 3) {
-            const nextO_WP = getHomeWP(i, h, o + 1, b, vS, hS, env);
+            const nextO_WP = getRawHomeWP(i, h, o + 1, b, vTotal, hTotal, env);
             li = Math.abs(homeWP - nextO_WP) / 0.027;
             document.getElementById('liDisplay').innerText = li.toFixed(2);
         } else { document.getElementById('liDisplay').innerText = "---"; }
@@ -198,30 +196,20 @@
     }
 
     function addLog() {
-        const vS = Number(document.getElementById('vTotal').innerText);
-        const hS = Number(document.getElementById('hTotal').innerText);
         const i = document.getElementById('inning').value, h = document.getElementById('half').value;
         const o = document.getElementById('outs').value, b = document.getElementById('bases').value;
+        const vTotal = Number(document.getElementById('vTotal').innerText);
+        const hTotal = Number(document.getElementById('hTotal').innerText);
         const currentHomeWP = parseFloat(document.getElementById('probDisplay').innerText);
         const li = document.getElementById('liDisplay').innerText;
         const m = document.getElementById('memo').value.trim();
         const sitStr = `${i}_${h==='top'?'T':'B'}_${o}_${b}`;
-
         let deltaOffense = logsData.length > 0 ? (h === 'top' ? -(currentHomeWP - logsData[logsData.length-1].homeWP) : (currentHomeWP - logsData[logsData.length-1].homeWP)) : 0;
-
-        logsData.push({ id: logsData.length + 1, sit: sitStr, sc: `${vS}:${hS}`, homeWP: currentHomeWP, chg: deltaOffense, li, memo: m });
+        logsData.push({ id: logsData.length + 1, sit: sitStr, sc: `${vTotal}:${hTotal}`, homeWP: currentHomeWP, chg: deltaOffense, li, memo: m });
         updateChart();
-
         if(Number(o) === 3) {
-            if(h === 'top') {
-                document.getElementById('half').value = 'bottom';
-                document.getElementById('curHScore').value = "0";
-            }
-            else {
-                document.getElementById('inning').value = Math.min(11, Number(i) + 1);
-                document.getElementById('half').value = 'top';
-                document.getElementById('curVScore').value = "0";
-            }
+            if(h === 'top') { document.getElementById('half').value = 'bottom'; document.getElementById('curHScore').value = "0"; }
+            else { document.getElementById('inning').value = Math.min(11, Number(i) + 1); document.getElementById('half').value = 'top'; document.getElementById('curVScore').value = "0"; }
             document.getElementById('outs').value = "0"; document.getElementById('bases').value = "0";
         }
         saveState(true); renderLogs(); calculate(); document.getElementById('memo').value = '';
@@ -236,15 +224,14 @@
     function renderLogs() {
         const b = document.getElementById('logBody'); b.innerHTML = '';
         const sorted = [...logsData].sort((a, b) => {
-            let valA = a[currentSort.key], valB = b[currentSort.key];
-            if (['homeWP', 'chg', 'li'].includes(currentSort.key)) { valA = parseFloat(valA) || 0; valB = parseFloat(valB) || 0; }
-            return valA > valB ? currentSort.dir : -currentSort.dir;
+            let vA = a[currentSort.key], vB = b[currentSort.key];
+            if (['homeWP', 'chg', 'li'].includes(currentSort.key)) { vA = parseFloat(vA) || 0; vB = parseFloat(vB) || 0; }
+            return vA > vB ? currentSort.dir : -currentSort.dir;
         });
         sorted.forEach(l => {
             const r1 = b.insertRow();
             const cClass = l.chg > 0 ? 'change-plus' : (l.chg < 0 ? 'change-minus' : '');
-            const chgText = l.id === 1 ? '-' : (l.chg > 0 ? '+' : '') + l.chg.toFixed(1) + '%';
-            r1.innerHTML = `<td>${l.id}</td><td>${l.sit}</td><td>${l.sc}</td><td>${l.homeWP.toFixed(1)}%</td><td class="${cClass}">${chgText}</td><td>${l.li}</td>`;
+            r1.innerHTML = `<td>${l.id}</td><td>${l.sit}</td><td>${l.sc}</td><td>${l.homeWP.toFixed(1)}%</td><td class="${cClass}">${(l.id===1?'-':(l.chg>0?'+':'')+l.chg.toFixed(1)+'%')}</td><td>${l.li}</td>`;
             if(l.memo) { const r2 = b.insertRow(); r2.className = 'memo-row'; r2.innerHTML = `<td colspan="6">↳ ${l.memo}</td>`; }
         });
     }
@@ -257,68 +244,34 @@
         link.download = `WinExp_Log_${new Date().toISOString().slice(0,10)}.csv`; link.click();
     }
 
-    // [로직 수정 완료] 루프 외부에서 누적 상태를 유지하여 정확한 이닝별 점수 추출
     function importCSV(event) {
-        const file = event.target.files[0];
-        if (!file) return;
+        const file = event.target.files[0]; if (!file) return;
         const reader = new FileReader();
         reader.onload = function(e) {
             const text = e.target.result;
             const lines = text.split('\n').filter(l => l.trim() !== "");
             const newLogs = [];
-
-            // 전광판 리셋 (0으로 초기화)
             document.querySelectorAll('.inn-val').forEach(el => el.innerText = "0");
-
-            // 루프 외부에서 누적 총점을 추적해야 정확한 역산이 가능함
-            let lastVTotal = 0;
-            let lastHTotal = 0;
-
+            let lastVTotal = 0, lastHTotal = 0;
             for (let i = 1; i < lines.length; i++) {
                 const cols = lines[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
                 if (cols.length < 7) continue;
-                
-                const log = {
-                    id: parseInt(cols[0]), sit: cols[1], sc: cols[2],
-                    homeWP: parseFloat(cols[3]), chg: parseFloat(cols[4]), li: cols[5],
-                    memo: cols[6].replace(/^"|"$/g, '').replace(/""/g, '"')
-                };
+                const log = { id: parseInt(cols[0]), sit: cols[1], sc: cols[2], homeWP: parseFloat(cols[3]), chg: parseFloat(cols[4]), li: cols[5], memo: cols[6].replace(/^"|"$/g, '').replace(/""/g, '"') };
                 newLogs.push(log);
-
-                // 상황 및 스코어 파싱
                 const [inn, half] = log.sit.split('_');
-                const [vT_AtLog, hT_AtLog] = log.sc.split(':').map(Number);
-                
-                const vCell = document.querySelector(`#sb-v-row [data-inn="${inn}"]`);
-                const hCell = document.querySelector(`#sb-h-row [data-inn="${inn}"]`);
-
-                if (half === 'T') {
-                    // 방문팀 이닝 득점 = 현재 로그 총점 - 직전 하프이닝 총점
-                    const innScoreV = vT_AtLog - lastVTotal;
-                    if(vCell) vCell.innerText = innScoreV;
-                    lastVTotal = vT_AtLog; // 누적값 갱신
-                } else {
-                    // 안방팀 이닝 득점 = 현재 로그 총점 - 직전 하프이닝 총점
-                    const innScoreH = hT_AtLog - lastHTotal;
-                    if(hCell) hCell.innerText = innScoreH;
-                    lastHTotal = hT_AtLog; // 누적값 갱신
-                }
+                const [vTAt, hTAt] = log.sc.split(':').map(Number);
+                if (half === 'T') { document.querySelector(`#sb-v-row [data-inn="${inn}"]`).innerText = vTAt - lastVTotal; lastVTotal = vTAt; } 
+                else { document.querySelector(`#sb-h-row [data-inn="${inn}"]`).innerText = hTAt - lastHTotal; lastHTotal = hTAt; }
             }
-
             if (newLogs.length > 0) {
                 logsData = newLogs;
                 const last = logsData[logsData.length - 1];
                 const [inn, half, out, base] = last.sit.split('_');
-
-                // 마지막 로그 시점의 입력창 복구 (이닝 득점 기준)
                 document.getElementById('curVScore').value = document.querySelector(`#sb-v-row [data-inn="${inn}"]`).innerText;
                 document.getElementById('curHScore').value = document.querySelector(`#sb-h-row [data-inn="${inn}"]`).innerText;
-                document.getElementById('inning').value = inn;
-                document.getElementById('half').value = (half === 'T' ? 'top' : 'bottom');
-                document.getElementById('outs').value = out;
-                document.getElementById('bases').value = base;
-
-                renderLogs(); updateChart(); calculate();
+                document.getElementById('inning').value = inn; document.getElementById('half').value = (half === 'T' ? 'top' : 'bottom');
+                document.getElementById('outs').value = out; document.getElementById('bases').value = base;
+                renderLogs(); updateChart(); calculate(); 
             }
         };
         reader.readAsText(file);
@@ -326,17 +279,7 @@
 
     function sortLogs(key) { if (currentSort.key === key) currentSort.dir *= -1; else { currentSort.key = key; currentSort.dir = 1; } renderLogs(); }
     function saveState(isLog = false) { historyStack.push(JSON.stringify({ vS: document.getElementById('curVScore').value, hS: document.getElementById('curHScore').value, inn: document.getElementById('inning').value, half: document.getElementById('half').value, outs: document.getElementById('outs').value, bases: document.getElementById('bases').value, env: document.getElementById('runEnv').value, isLog })); }
-    
-    function undo() {
-        if(logsData.length <= 1 && historyStack.length <= 2) return;
-        const last = JSON.parse(historyStack.pop());
-        if(last.isLog) { logsData.pop(); renderLogs(); updateChart(); }
-        const prev = JSON.parse(historyStack[historyStack.length - 1]);
-        document.getElementById('curVScore').value = prev.vS; document.getElementById('curHScore').value = prev.hS;
-        document.getElementById('inning').value = prev.inn; document.getElementById('half').value = prev.half;
-        document.getElementById('outs').value = prev.outs; document.getElementById('bases').value = prev.bases;
-        document.getElementById('runEnv').value = prev.env; calculate();
-    }
+    function undo() { if(logsData.length <= 1 && historyStack.length <= 2) return; const last = JSON.parse(historyStack.pop()); if(last.isLog) { logsData.pop(); renderLogs(); updateChart(); } const prev = JSON.parse(historyStack[historyStack.length - 1]); document.getElementById('curVScore').value = prev.vS; document.getElementById('curHScore').value = prev.hS; document.getElementById('inning').value = prev.inn; document.getElementById('half').value = prev.half; document.getElementById('outs').value = prev.outs; document.getElementById('bases').value = prev.bases; document.getElementById('runEnv').value = prev.env; calculate(); }
 
     document.querySelectorAll('select').forEach(el => el.addEventListener('change', calculate));
     window.onload = () => { initChart(); calculate(); saveState(); logsData.push({ id: 1, sit: "1_T_0_0", sc: "0:0", homeWP: 50.0, chg: 0, li: "0.81", memo: "Play Ball!" }); renderLogs(); };
