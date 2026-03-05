@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>Win Expectancy Analytics Terminal v5.1</title>
+    <title>Win Expectancy Analytics Terminal v5.2</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root {
@@ -51,7 +51,7 @@
 
 <div class="container">
     <div class="top-bar">
-        <span style="color: var(--accent); font-weight: 900; letter-spacing: 1px;">Win Expectancy Terminal v5.1</span>
+        <span style="color: var(--accent); font-weight: 900; letter-spacing: 1px;">Win Expectancy Terminal v5.2</span>
         <div style="display: flex; gap: 10px; align-items: center;">
             <label style="font-size: 0.75rem;">ENV(RE):</label>
             <input type="number" id="runEnv" value="4.5" step="0.1" class="env-input" oninput="calculate()">
@@ -85,8 +85,8 @@
     <div class="main-grid">
         <div class="card">
             <div class="field-row">
-                <div><label style="color: var(--blue);">VISITOR SCORE</label><div class="score-ctrl"><button class="btn-step" onclick="changeScore('curVScore', -1)">-</button><input type="number" id="curVScore" value="0" class="score-display" readonly><button class="btn-step" onclick="changeScore('curVScore', 1)">+</button></div></div>
-                <div><label style="color: var(--red);">HOME SCORE</label><div class="score-ctrl"><button class="btn-step" onclick="changeScore('curHScore', -1)">-</button><input type="number" id="curHScore" value="0" class="score-display" readonly><button class="btn-step" onclick="changeScore('curHScore', 1)">+</button></div></div>
+                <div><label style="color: var(--blue);">VISITOR SCORE (TOTAL)</label><div class="score-ctrl"><button class="btn-step" onclick="changeScore('curVScore', -1)">-</button><input type="number" id="curVScore" value="0" class="score-display" readonly><button class="btn-step" onclick="changeScore('curVScore', 1)">+</button></div></div>
+                <div><label style="color: var(--red);">HOME SCORE (TOTAL)</label><div class="score-ctrl"><button class="btn-step" onclick="changeScore('curHScore', -1)">-</button><input type="number" id="curHScore" value="0" class="score-display" readonly><button class="btn-step" onclick="changeScore('curHScore', 1)">+</button></div></div>
             </div>
             <div class="field-row">
                 <div><label>INNING</label><select id="inning" onchange="calculate()"><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10</option><option value="11">11</option></select></div>
@@ -145,34 +145,38 @@
         calculate();
     }
 
+    // [전광판 갱신 로직] 현재 총점에서 이전 이닝 점수를 뺀 '이닝 득점'을 칸에 표시
     function refreshScoreboard() {
-        const v = Number(document.getElementById('curVScore').value);
-        const h = Number(document.getElementById('curHScore').value);
+        const curVTotal = Number(document.getElementById('curVScore').value);
+        const curHTotal = Number(document.getElementById('curHScore').value);
         const curI = Number(document.getElementById('inning').value);
         const half = document.getElementById('half').value;
+
+        // 이전 이닝들의 합계를 구함
+        let prevVSum = 0, prevHSum = 0;
+        for(let i=1; i<curI; i++) {
+            const vVal = document.querySelector(`#sb-v-row [data-inn="${i}"]`).innerText;
+            const hVal = document.querySelector(`#sb-h-row [data-inn="${i}"]`).innerText;
+            if(vVal !== '-' && vVal !== '·') prevVSum += Number(vVal);
+            if(hVal !== '-' && hVal !== '·') prevHSum += Number(hVal);
+        }
+
+        const curInningV = curVTotal - prevVSum;
+        const curInningH = curHTotal - prevHSum;
+
         for(let i=1; i<=11; i++) {
             const vCell = document.querySelector(`#sb-v-row [data-inn="${i}"]`);
             const hCell = document.querySelector(`#sb-h-row [data-inn="${i}"]`);
             if (i === curI) {
-                vCell.innerText = v;
-                hCell.innerText = (half === 'bottom') ? h : (hCell.innerText === '-' || hCell.innerText === '·' ? '·' : hCell.innerText);
+                vCell.innerText = curInningV;
+                hCell.innerText = (half === 'bottom') ? curInningH : (hCell.innerText === '-' || hCell.innerText === '·' ? '·' : hCell.innerText);
             } else if (i > curI) {
                 vCell.innerText = "-";
                 hCell.innerText = "-";
             }
         }
-        updateTotals();
-    }
-
-    function updateTotals() {
-        let vSum = 0, hSum = 0;
-        document.querySelectorAll('.inn-val').forEach(td => {
-            const val = Number(td.innerText) || 0;
-            if (td.parentNode.id === 'sb-v-row') vSum += val;
-            else hSum += val;
-        });
-        document.getElementById('vTotal').innerText = vSum;
-        document.getElementById('hTotal').innerText = hSum;
+        document.getElementById('vTotal').innerText = curVTotal;
+        document.getElementById('hTotal').innerText = curHTotal;
     }
 
     function getHomeWP(i, h, o, b, vs, hs, env) {
@@ -188,18 +192,18 @@
     function calculate() {
         if(typeof bigTable === 'undefined') return;
         refreshScoreboard();
-        const vT = Number(document.getElementById('vTotal').innerText);
-        const hT = Number(document.getElementById('hTotal').innerText);
+        const vS = Number(document.getElementById('curVScore').value);
+        const hS = Number(document.getElementById('curHScore').value);
         const i = Number(document.getElementById('inning').value), h = document.getElementById('half').value;
         const o = Number(document.getElementById('outs').value), b = document.getElementById('bases').value, env = Number(document.getElementById('runEnv').value);
-        let homeWP = getHomeWP(i, h, o, b, vT, hT, env);
+        let homeWP = getHomeWP(i, h, o, b, vS, hS, env);
         if (o === 3) {
             let nI = i, nH = h; if(h === 'top') nH = 'bottom'; else nI++;
-            homeWP = getHomeWP(nI, nH, 0, "0", vT, hT, env);
+            homeWP = getHomeWP(nI, nH, 0, "0", vS, hS, env);
         }
         let li = 0;
         if (o < 3) {
-            const nO_WP = getHomeWP(i, h, o + 1, b, vT, hT, env);
+            const nO_WP = getHomeWP(i, h, o + 1, b, vS, hS, env);
             li = Math.abs(homeWP - nO_WP) / 0.027;
             document.getElementById('liDisplay').innerText = li.toFixed(2);
         } else { document.getElementById('liDisplay').innerText = "---"; }
@@ -209,8 +213,8 @@
     function addLog() {
         const i = document.getElementById('inning').value, h = document.getElementById('half').value;
         const o = document.getElementById('outs').value, b = document.getElementById('bases').value;
-        const vT = Number(document.getElementById('vTotal').innerText);
-        const hT = Number(document.getElementById('hTotal').innerText);
+        const vT = Number(document.getElementById('curVScore').value);
+        const hT = Number(document.getElementById('curHScore').value);
         const cWP = parseFloat(document.getElementById('probDisplay').innerText);
         const li = document.getElementById('liDisplay').innerText;
         const m = document.getElementById('memo').value.trim();
@@ -219,8 +223,8 @@
         logsData.push({ id: logsData.length + 1, sit: sitStr, sc: `${vT}:${hT}`, homeWP: cWP, chg: dOff, li, memo: m });
         updateChart();
         if(Number(o) === 3) {
-            if(h === 'top') { document.getElementById('half').value = 'bottom'; document.getElementById('curHScore').value = "0"; }
-            else { document.getElementById('inning').value = Math.min(11, Number(i) + 1); document.getElementById('half').value = 'top'; document.getElementById('curVScore').value = "0"; }
+            if(h === 'top') document.getElementById('half').value = 'bottom';
+            else { document.getElementById('inning').value = Math.min(11, Number(i) + 1); document.getElementById('half').value = 'top'; }
             document.getElementById('outs').value = "0"; document.getElementById('bases').value = "0";
         }
         saveState(true); renderLogs(); calculate(); document.getElementById('memo').value = '';
@@ -272,14 +276,15 @@
                 const [inn, half] = log.sit.split('_');
                 const [vTAt, hTAt] = log.sc.split(':').map(Number);
                 if (half === 'T') { document.querySelector(`#sb-v-row [data-inn="${inn}"]`).innerText = vTAt - lVT; lVT = vTAt; } 
-                else { document.querySelector(`#sb-v-row [data-inn="${inn}"]`).innerText = vTAt - lVT; document.querySelector(`#sb-h-row [data-inn="${inn}"]`).innerText = hTAt - lHT; lHT = hTAt; }
+                else { document.querySelector(`#sb-h-row [data-inn="${inn}"]`).innerText = hTAt - lHT; lHT = hTAt; }
             }
             if (newLogs.length > 0) {
                 logsData = newLogs;
                 const last = logsData[logsData.length - 1];
+                const [vS, hS] = last.sc.split(':').map(Number);
                 const [inn, half, out, base] = last.sit.split('_');
-                document.getElementById('curVScore').value = document.querySelector(`#sb-v-row [data-inn="${inn}"]`).innerText === '·' ? 0 : document.querySelector(`#sb-v-row [data-inn="${inn}"]`).innerText;
-                document.getElementById('curHScore').value = document.querySelector(`#sb-h-row [data-inn="${inn}"]`).innerText === '·' ? 0 : document.querySelector(`#sb-h-row [data-inn="${inn}"]`).innerText;
+                document.getElementById('curVScore').value = vS;
+                document.getElementById('curHScore').value = hS;
                 document.getElementById('inning').value = inn; document.getElementById('half').value = (half === 'T' ? 'top' : 'bottom');
                 document.getElementById('outs').value = out; document.getElementById('bases').value = base;
                 renderLogs(); updateChart(); calculate(); 
