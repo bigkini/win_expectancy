@@ -2,82 +2,85 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>Win Expectancy Analytics Terminal v5.4</title>
+    <title>Win Expectancy Analytics Terminal v6.6</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root {
             --dark: #0f172a; --panel: #1e293b; --accent: #fbbf24;
-            --blue: #3b82f6; --red: #ef4444; --gray: #94a3b8; --led: #fde047;
+            --blue: #6366f1; --red: #ef4444; --gray: #94a3b8; --led: #fde047; --green: #10b981;
+            --row-bot: rgba(255, 255, 255, 0.03);
         }
         body { font-family: 'Pretendard', sans-serif; background: #0f172a; margin: 0; padding: 10px; color: #e2e8f0; }
         .container { max-width: 950px; margin: 0 auto; }
+        
         .top-bar { display: flex; justify-content: space-between; align-items: center; padding: 8px 15px; background: #1e293b; border-radius: 6px; margin-bottom: 8px; }
-        .env-input { width: 45px; background: #0f172a; color: var(--accent); border: 1px solid #334155; border-radius: 4px; padding: 2px 5px; text-align: center; font-weight: bold; }
         .scoreboard { background: #000; padding: 15px; border-radius: 8px; border: 1px solid #334155; margin-bottom: 10px; }
         .sb-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-        .sb-table th { color: #475569; font-size: 0.7rem; padding-bottom: 4px; }
-        .sb-team-name-input { background: transparent; border: none; color: #fff; font-size: 0.9rem; font-weight: bold; width: 100%; outline: none; border-bottom: 1px solid transparent; }
-        .sb-team-name-input:focus { border-bottom: 1px solid var(--accent); }
+        .sb-table th { color: #475569; font-size: 0.7rem; padding-bottom: 4px; background: transparent; }
+        .sb-team-name-input { background: transparent; border: none; color: #fff; font-size: 0.9rem; font-weight: bold; width: 100%; outline: none; }
         .inn-val { color: var(--led); text-align: center; font-size: 1.1rem; font-family: 'Courier New', monospace; font-weight: bold; }
         .sb-total { color: var(--accent); font-size: 1.5rem; font-weight: 900; border-left: 1px solid #334155; text-align: center; }
-        .main-grid { display: grid; grid-template-columns: 320px 1fr; gap: 10px; align-items: start; }
-        .card { background: #1e293b; padding: 15px; border-radius: 8px; border: 1px solid #334155; }
+
+        /* [그래프 높이 맞춤] stretch 적용 */
+        .main-grid { display: grid; grid-template-columns: 320px 1fr; gap: 10px; align-items: stretch; margin-bottom: 10px; }
+        .card { background: #1e293b; padding: 15px; border-radius: 8px; border: 1px solid #334155; display: flex; flex-direction: column; }
         .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
         label { display: block; font-size: 0.75rem; color: var(--gray); margin-bottom: 4px; font-weight: bold; }
         select, textarea { width: 100%; padding: 8px; background: #0f172a; color: #fff; border: 1px solid #334155; border-radius: 4px; font-size: 0.95rem; outline: none; box-sizing: border-box; }
-        .score-ctrl { display: flex; align-items: center; gap: 5px; background: rgba(255,255,255,0.05); padding: 5px; border-radius: 6px; }
         .score-display { width: 100%; background: transparent; color: var(--accent); border: none; font-size: 1.8rem; font-weight: 900; text-align: center; outline: none; }
         .btn-step { width: 30px; height: 35px; background: #334155; color: white; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; }
-        .live-stats { margin-top: 15px; padding-top: 15px; border-top: 1px solid #334155; }
-        .stat-value { font-size: 2.2rem; font-weight: 900; line-height: 1.2; }
-        .val-wp { color: var(--red); } 
-        .chart-card { min-height: 380px; padding: 10px; position: relative; }
-        .btn-group { display: flex; gap: 8px; margin-top: 10px; }
-        button { flex: 1; padding: 10px; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 0.9rem; }
-        .btn-save { background: var(--blue); color: white; }
+        .live-stats { margin-top: auto; padding-top: 15px; border-top: 1px solid #334155; }
+        .stat-value { font-size: 2.2rem; font-weight: 900; line-height: 1.2; color: var(--red); }
+        
+        /* [차트 카드 내부 구성] */
+        .chart-card { padding: 10px; position: relative; }
+        .chart-card canvas { width: 100% !important; height: 100% !important; }
+
+        /* 버튼 레이아웃 */
+        .btn-row { display: flex; gap: 8px; margin-top: 10px; }
+        .btn-row button { flex: 1; padding: 10px; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 0.9rem; }
+        .btn-save { background: #3b82f6; color: white; }
         .btn-undo { background: #334155; color: #94a3b8; }
-        .btn-csv { background: #10b981; color: white; margin-top: 10px; }
-        .btn-import { background: #6366f1; color: white; margin-top: 10px; }
-        .log-section { margin-top: 10px; background: #1e293b; border-radius: 8px; overflow: hidden; border: 1px solid #334155; }
-        .log-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
-        .log-table th { background: #0f172a; color: var(--gray); padding: 12px; text-align: left; cursor: pointer; }
-        .log-table td { padding: 10px 12px; border-bottom: 1px solid #334155; }
+
+        /* 로그 섹션 (스크린샷 피델리티) */
+        .log-section { background: #1e293b; border-radius: 8px; border: 1px solid #334155; overflow: hidden; margin-top: 10px; }
+        .log-btn-group { display: flex; gap: 5px; padding: 10px; border-bottom: 1px solid #334155; }
+        .btn-import { flex: 1; background: #6366f1; color: white; padding: 12px; font-weight: bold; border-radius: 4px; border: none; cursor: pointer; }
+        .btn-csv { flex: 1; background: var(--green); color: white; padding: 12px; font-weight: bold; border-radius: 4px; border: none; cursor: pointer; }
+        
+        .log-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; color: #e2e8f0; }
+        
+        /* th 배경 구분 */
+        .log-table th { background: #0f172a; color: var(--gray); padding: 15px 12px; text-align: left; cursor: pointer; font-size: 0.75rem; border-bottom: 1px solid #334155; }
+        .log-table td { padding: 15px 12px; border-bottom: 1px solid #334155; }
+        
+        /* 초/말 배경 명암 구분 */
+        .row-top { background: transparent; }
+        .row-bot { background: var(--row-bot); }
+        .data-row:hover { filter: brightness(1.3); cursor: pointer; }
+        
+        .memo-active-row td { background: rgba(99, 102, 241, 0.15); padding: 10px 12px 10px 40px; border-bottom: 1px solid #334155; }
+        .memo-display-row td { padding: 8px 12px 8px 40px; color: var(--gray); font-style: italic; border-bottom: 1px solid #334155; }
+        .memo-edit-input { width: 95%; background: #0f172a; color: var(--accent); border: 1px solid #3b82f6; padding: 8px; border-radius: 4px; font-family: inherit; font-style: normal; }
+
         .change-plus { color: #4ade80; font-weight: bold; } 
         .change-minus { color: #f87171; font-weight: bold; } 
-        .memo-row td { background: rgba(15, 23, 42, 0.4); padding: 5px 12px 10px 40px; color: var(--gray); font-style: italic; border-bottom: 1px solid #334155; }
     </style>
 </head>
 <body>
 
 <div class="container">
     <div class="top-bar">
-        <span style="color: var(--accent); font-weight: 900; letter-spacing: 1px;">Win Expectancy Terminal v5.4</span>
-        <div style="display: flex; gap: 10px; align-items: center;">
-            <label style="font-size: 0.75rem;">ENV(RE):</label>
-            <input type="number" id="runEnv" value="4.5" step="0.1" class="env-input" oninput="calculate()">
-        </div>
+        <span style="color: var(--accent); font-weight: 900; letter-spacing: 1px;">Win Expectancy Analytics v6.6</span>
+        <div style="display: flex; gap: 10px; align-items: center;"><label style="font-size: 0.75rem;">ENV(RE):</label><input type="number" id="runEnv" value="4.5" step="0.1" style="width:45px; background:#0f172a; color:var(--accent); border:1px solid #334155; text-align:center;" oninput="calculate()"></div>
     </div>
 
     <div class="scoreboard">
         <table class="sb-table">
-            <thead>
-                <tr><th style="width:90px; text-align:left;">TEAM</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th><th>7</th><th>8</th><th>9</th><th>10</th><th>11</th><th style="width:40px;">R</th></tr>
-            </thead>
+            <thead><tr><th style="width:90px; text-align:left;">TEAM</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th><th>7</th><th>8</th><th>9</th><th>10</th><th>11</th><th style="width:40px;">R</th></tr></thead>
             <tbody>
-                <tr id="sb-v-row">
-                    <td><input type="text" id="vTeamName" value="VISITOR" class="sb-team-name-input"></td>
-                    <td class="inn-val" data-inn="1">-</td><td class="inn-val" data-inn="2">-</td><td class="inn-val" data-inn="3">-</td>
-                    <td class="inn-val" data-inn="4">-</td><td class="inn-val" data-inn="5">-</td><td class="inn-val" data-inn="6">-</td>
-                    <td class="inn-val" data-inn="7">-</td><td class="inn-val" data-inn="8">-</td><td class="inn-val" data-inn="9">-</td>
-                    <td class="inn-val" data-inn="10">-</td><td class="inn-val" data-inn="11">-</td><td class="sb-total" id="vTotal">0</td>
-                </tr>
-                <tr id="sb-h-row">
-                    <td><input type="text" id="hTeamName" value="HOME" class="sb-team-name-input"></td>
-                    <td class="inn-val" data-inn="1">-</td><td class="inn-val" data-inn="2">-</td><td class="inn-val" data-inn="3">-</td>
-                    <td class="inn-val" data-inn="4">-</td><td class="inn-val" data-inn="5">-</td><td class="inn-val" data-inn="6">-</td>
-                    <td class="inn-val" data-inn="7">-</td><td class="inn-val" data-inn="8">-</td><td class="inn-val" data-inn="9">-</td>
-                    <td class="inn-val" data-inn="10">-</td><td class="inn-val" data-inn="11">-</td><td class="sb-total" id="hTotal">0</td>
-                </tr>
+                <tr id="sb-v-row"><td><input type="text" id="vTeamName" value="VISITOR" class="sb-team-name-input"></td><td class="inn-val" data-inn="1">-</td><td class="inn-val" data-inn="2">-</td><td class="inn-val" data-inn="3">-</td><td class="inn-val" data-inn="4">-</td><td class="inn-val" data-inn="5">-</td><td class="inn-val" data-inn="6">-</td><td class="inn-val" data-inn="7">-</td><td class="inn-val" data-inn="8">-</td><td class="inn-val" data-inn="9">-</td><td class="inn-val" data-inn="10">-</td><td class="inn-val" data-inn="11">-</td><td class="sb-total" id="vTotal">0</td></tr>
+                <tr id="sb-h-row"><td><input type="text" id="hTeamName" value="HOME" class="sb-team-name-input"></td><td class="inn-val" data-inn="1">-</td><td class="inn-val" data-inn="2">-</td><td class="inn-val" data-inn="3">-</td><td class="inn-val" data-inn="4">-</td><td class="inn-val" data-inn="5">-</td><td class="inn-val" data-inn="6">-</td><td class="inn-val" data-inn="7">-</td><td class="inn-val" data-inn="8">-</td><td class="inn-val" data-inn="9">-</td><td class="inn-val" data-inn="10">-</td><td class="inn-val" data-inn="11">-</td><td class="sb-total" id="hTotal">0</td></tr>
             </tbody>
         </table>
     </div>
@@ -85,8 +88,8 @@
     <div class="main-grid">
         <div class="card">
             <div class="field-row">
-                <div><label style="color: var(--blue);">VISITOR SCORE (TOTAL)</label><div class="score-ctrl"><button class="btn-step" onclick="changeScore('curVScore', -1)">-</button><input type="number" id="curVScore" value="0" class="score-display" readonly><button class="btn-step" onclick="changeScore('curVScore', 1)">+</button></div></div>
-                <div><label style="color: var(--red);">HOME SCORE (TOTAL)</label><div class="score-ctrl"><button class="btn-step" onclick="changeScore('curHScore', -1)">-</button><input type="number" id="curHScore" value="0" class="score-display" readonly><button class="btn-step" onclick="changeScore('curHScore', 1)">+</button></div></div>
+                <div><label style="color: #3b82f6;">VISITOR SCORE (TOTAL)</label><div style="display:flex; gap:5px; background:rgba(255,255,255,0.05); padding:5px; border-radius:6px;"><button class="btn-step" onclick="changeScore('curVScore', -1)">-</button><input type="number" id="curVScore" value="0" class="score-display" readonly><button class="btn-step" onclick="changeScore('curVScore', 1)">+</button></div></div>
+                <div><label style="color: var(--red);">HOME SCORE (TOTAL)</label><div style="display:flex; gap:5px; background:rgba(255,255,255,0.05); padding:5px; border-radius:6px;"><button class="btn-step" onclick="changeScore('curHScore', -1)">-</button><input type="number" id="curHScore" value="0" class="score-display" readonly><button class="btn-step" onclick="changeScore('curHScore', 1)">+</button></div></div>
             </div>
             <div class="field-row">
                 <div><label>INNING</label><select id="inning" onchange="calculate()"><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10</option><option value="11">11</option></select></div>
@@ -97,22 +100,28 @@
                 <div><label>RUNNERS</label><select id="bases" onchange="calculate()"><option value="0">None</option><option value="1">1st</option><option value="2">2nd</option><option value="3">3rd</option><option value="12">1st, 2nd</option><option value="13">1st, 3rd</option><option value="23">2nd, 3rd</option><option value="123">Loaded</option></select></div>
             </div>
             <textarea id="memo" rows="2" placeholder="MEMO..."></textarea>
-            <div class="btn-group"><button class="btn-save" onclick="addLog()">LOG EVENT</button><button class="btn-undo" onclick="undo()">UNDO</button></div>
+            
+            <div class="btn-row">
+                <button class="btn-save" onclick="addLog()">LOG EVENT</button>
+                <button class="btn-undo" onclick="undo()">UNDO</button>
+            </div>
+
             <div class="live-stats">
                 <div class="stat-item"><div class="stat-label">HOME WIN PROB</div><div class="stat-value val-wp" id="probDisplay">50.0%</div></div>
-                <div class="stat-item"><div class="stat-label">LEVERAGE INDEX</div><div class="stat-value val-li" id="liDisplay">0.81</div></div>
+                <div class="stat-item"><div class="stat-label">LEVERAGE INDEX</div><div class="stat-value" style="font-size:1.8rem; color:#fff;" id="liDisplay">0.81</div></div>
             </div>
         </div>
-        <div class="card chart-card"><canvas id="wpChart"></canvas></div>
+        <div class="card chart-card">
+            <canvas id="wpChart"></canvas>
+        </div>
     </div>
 
     <div class="log-section">
-                <div style="display: flex; gap: 5px; padding: 10px;">
+        <div class="log-btn-group">
             <button class="btn-import" onclick="document.getElementById('csvInput').click()">IMPORT CSV</button>
             <input type="file" id="csvInput" style="display:none" accept=".csv" onchange="importCSV(event)">
             <button class="btn-csv" onclick="exportCSV()">EXPORT CSV</button>
         </div>
-
         <table class="log-table" id="logTable">
             <thead>
                 <tr><th onclick="sortLogs('id')"># ↕</th><th onclick="sortLogs('sit')">SITUATION ↕</th><th onclick="sortLogs('sc')">SCORE ↕</th><th onclick="sortLogs('wp')">HOME WP ↕</th><th onclick="sortLogs('chg')">ΔOFFENSE ↕</th><th onclick="sortLogs('li')">LI ↕</th></tr>
@@ -124,10 +133,8 @@
 
 <script src="data.js"></script>
 <script>
-    let wpChart;
-    let logsData = [];
-    const historyStack = [];
-    let currentSort = { key: 'id', dir: -1 };
+    let wpChart, logsData = [], historyStack = [], currentSort = { key: 'id', dir: -1 };
+    let activeMemoId = null;
 
     function initChart() {
         const ctx = document.getElementById('wpChart').getContext('2d');
@@ -140,90 +147,65 @@
 
     function changeScore(targetId, delta) {
         const el = document.getElementById(targetId);
-        let newVal = Number(el.value) + delta;
-        if (newVal < 0) newVal = 0;
-        el.value = newVal;
-        calculate();
+        el.value = Math.max(0, Number(el.value) + delta); calculate();
     }
 
     function refreshScoreboard() {
-        const curVTotal = Number(document.getElementById('curVScore').value);
-        const curHTotal = Number(document.getElementById('curHScore').value);
-        const curI = Number(document.getElementById('inning').value);
-        const half = document.getElementById('half').value;
-
-        let prevVSum = 0, prevHSum = 0;
+        const curV = Number(document.getElementById('curVScore').value), curH = Number(document.getElementById('curHScore').value);
+        const curI = Number(document.getElementById('inning').value), half = document.getElementById('half').value;
+        let prevV = 0, prevH = 0;
         for(let i=1; i<curI; i++) {
             const vVal = document.querySelector(`#sb-v-row [data-inn="${i}"]`).innerText;
             const hVal = document.querySelector(`#sb-h-row [data-inn="${i}"]`).innerText;
-            if(vVal !== '-' && vVal !== '·') prevVSum += Number(vVal);
-            if(hVal !== '-' && hVal !== '·') prevHSum += Number(hVal);
+            if(vVal !== '-' && vVal !== '·') prevV += Number(vVal);
+            if(hVal !== '-' && hVal !== '·') prevH += Number(hVal);
         }
-
         for(let i=1; i<=11; i++) {
-            const vCell = document.querySelector(`#sb-v-row [data-inn="${i}"]`);
-            const hCell = document.querySelector(`#sb-h-row [data-inn="${i}"]`);
-            if (i === curI) {
-                vCell.innerText = curVTotal - prevVSum;
-                hCell.innerText = (half === 'bottom') ? (curHTotal - prevHSum) : (hCell.innerText === '-' || hCell.innerText === '·' ? '·' : hCell.innerText);
-            } else if (i > curI) {
-                vCell.innerText = "-";
-                hCell.innerText = "-";
-            }
+            const vCell = document.querySelector(`#sb-v-row [data-inn="${i}"]`), hCell = document.querySelector(`#sb-h-row [data-inn="${i}"]`);
+            if (i === curI) { vCell.innerText = curV - prevV; hCell.innerText = (half === 'bottom') ? (curH - prevH) : (hCell.innerText === '-' || hCell.innerText === '·' ? '·' : hCell.innerText); }
+            else if (i > curI) { vCell.innerText = "-"; hCell.innerText = "-"; }
         }
-        document.getElementById('vTotal').innerText = curVTotal;
-        document.getElementById('hTotal').innerText = curHTotal;
+        document.getElementById('vTotal').innerText = curV; document.getElementById('hTotal').innerText = curH;
     }
 
-    function getHomeWP(i, h, o, b, vs, hs, env) {
-        let lookI = i, lookH = h, lookO = o, lookB = b;
-        if(lookO === 3) { lookO = 0; lookB = "0"; if(lookH === 'top') lookH = 'bottom'; else { lookI = lookI + 1; lookH = 'top'; } }
-        const envF = 4.5 / env;
-        let diff = Math.round((hs - vs) * envF);
-        diff = Math.max(-15, Math.min(15, diff));
-        const sit = bigTable[`${lookI > 9 ? 9 : lookI}_${lookH}_${lookO}_${lookB}`];
+    function getRawHomeWP(i, h, o, b, vs, hs, env) {
+        let lI = i, lH = h, lO = o, lB = b;
+        if(lO === 3) { lO = 0; lB = "0"; if(lH === 'top') lH = 'bottom'; else { lI = lI + 1; lH = 'top'; } }
+        const envF = 4.5 / env, diff = Math.max(-15, Math.min(15, Math.round((hs - vs) * envF)));
+        const sit = bigTable[`${lI > 9 ? 9 : lI}_${lH}_${lO}_${lB.replace(', ', '')}`];
         return sit ? sit.probs[diff.toString()] : (hs >= vs ? 1.0 : 0.0);
     }
 
     function calculate() {
         if(typeof bigTable === 'undefined') return;
         refreshScoreboard();
-        const vS = Number(document.getElementById('curVScore').value);
-        const hS = Number(document.getElementById('curHScore').value);
-        const i = Number(document.getElementById('inning').value), h = document.getElementById('half').value;
-        const o = Number(document.getElementById('outs').value), b = document.getElementById('bases').value, env = Number(document.getElementById('runEnv').value);
-        let homeWP = getHomeWP(i, h, o, b, vS, hS, env);
-        if (o === 3) {
-            let nI = i, nH = h; if(h === 'top') nH = 'bottom'; else nI++;
-            homeWP = getHomeWP(nI, nH, 0, "0", vS, hS, env);
-        }
-        let li = 0;
-        if (o < 3) {
-            const nO_WP = getHomeWP(i, h, o + 1, b, vS, hS, env);
-            li = Math.abs(homeWP - nO_WP) / 0.027;
-            document.getElementById('liDisplay').innerText = li.toFixed(2);
-        } else { document.getElementById('liDisplay').innerText = "---"; }
+        const vS = Number(document.getElementById('curVScore').value), hS = Number(document.getElementById('curHScore').value);
+        const i = Number(document.getElementById('inning').value), h = document.getElementById('half').value, o = Number(document.getElementById('outs').value), b = document.getElementById('bases').value, env = Number(document.getElementById('runEnv').value);
+        let homeWP = getRawHomeWP(i, h, o, b, vS, hS, env);
+        if (o === 3) { let nI = i, nH = h; if(h === 'top') nH = 'bottom'; else nI++; homeWP = getRawHomeWP(nI, nH, 0, "0", vS, hS, env); }
+        let li = 0; if (o < 3) { const nO_WP = getRawHomeWP(i, h, o + 1, b, vS, hS, env); li = Math.abs(homeWP - nO_WP) / 0.027; document.getElementById('liDisplay').innerText = li.toFixed(2); } else { document.getElementById('liDisplay').innerText = "---"; }
         document.getElementById('probDisplay').innerText = (homeWP * 100).toFixed(1) + '%';
     }
 
     function addLog() {
-        const i = document.getElementById('inning').value, h = document.getElementById('half').value;
-        const o = document.getElementById('outs').value, b = document.getElementById('bases').value;
-        const vT = Number(document.getElementById('curVScore').value);
-        const hT = Number(document.getElementById('curHScore').value);
-        const cWP = parseFloat(document.getElementById('probDisplay').innerText);
-        const li = document.getElementById('liDisplay').innerText;
-        const m = document.getElementById('memo').value.trim();
-        const sitStr = `${i}_${h==='top'?'T':'B'}_${o}_${b}`;
+        const i = document.getElementById('inning').value, h = document.getElementById('half').value, o = document.getElementById('outs').value, b = document.getElementById('bases').value;
+        const vT = Number(document.getElementById('curVScore').value), hT = Number(document.getElementById('curHScore').value);
+        const cWP = parseFloat(document.getElementById('probDisplay').innerText), li = document.getElementById('liDisplay').innerText, m = document.getElementById('memo').value.trim(), sitStr = `${i}_${h==='top'?'T':'B'}_${o}_${b.replace(', ', '')}`;
         let dOff = logsData.length > 0 ? (h === 'top' ? -(cWP - logsData[logsData.length-1].homeWP) : (cWP - logsData[logsData.length-1].homeWP)) : 0;
         logsData.push({ id: logsData.length + 1, sit: sitStr, sc: `${vT}:${hT}`, homeWP: cWP, chg: dOff, li, memo: m });
         updateChart();
-        if(Number(o) === 3) {
-            if(h === 'top') document.getElementById('half').value = 'bottom';
-            else { document.getElementById('inning').value = Math.min(11, Number(i) + 1); document.getElementById('half').value = 'top'; }
-            document.getElementById('outs').value = "0"; document.getElementById('bases').value = "0";
-        }
         saveState(true); renderLogs(); calculate(); document.getElementById('memo').value = '';
+    }
+
+    function toggleMemoEdit(id) {
+        if (activeMemoId === id) return; activeMemoId = id; renderLogs();
+        setTimeout(() => { if(document.getElementById(`edit-input-${id}`)) document.getElementById(`edit-input-${id}`).focus(); }, 10);
+    }
+
+    function saveMemo(id) {
+        const input = document.getElementById(`edit-input-${id}`);
+        if (input) { const idx = logsData.findIndex(l => l.id === id); if (idx !== -1) logsData[idx].memo = input.value.trim(); }
+        activeMemoId = null; renderLogs();
     }
 
     function updateChart() {
@@ -234,101 +216,63 @@
 
     function renderLogs() {
         const b = document.getElementById('logBody'); b.innerHTML = '';
-        const sorted = [...logsData].sort((a, b) => {
-            let vA = a[currentSort.key], vB = b[currentSort.key];
-            if (['homeWP', 'chg', 'li'].includes(currentSort.key)) { vA = parseFloat(vA) || 0; vB = parseFloat(vB) || 0; }
-            return vA > vB ? currentSort.dir : -currentSort.dir;
-        });
-        sorted.forEach(l => {
-            const r1 = b.insertRow();
+        // [내림차순 정렬] ID 기준
+        const displayData = [...logsData].sort((a, b) => b.id - a.id);
+        
+        displayData.forEach(l => {
+            const isBot = l.sit.includes('_B_');
+            const r1 = b.insertRow(); r1.className = `data-row ${isBot ? 'row-bot' : 'row-top'}`;
+            r1.onclick = () => toggleMemoEdit(l.id);
             const cCl = l.chg > 0 ? 'change-plus' : (l.chg < 0 ? 'change-minus' : '');
-            r1.innerHTML = `<td>${l.id}</td><td>${l.sit}</td><td>${l.sc}</td><td>${l.homeWP.toFixed(1)}%</td><td class="${cCl}">${(l.id===1?'-':(l.chg>0?'+':'')+l.chg.toFixed(1)+'%')}</td><td>${l.li}</td>`;
-            if(l.memo) { const r2 = b.insertRow(); r2.className = 'memo-row'; r2.innerHTML = `<td colspan="6">↳ ${l.memo}</td>`; }
+            const sign = l.id === 1 ? '' : (l.chg > 0 ? '+' : '');
+            r1.innerHTML = `<td>${l.id}</td><td>${l.sit}</td><td>${l.sc}</td><td>${l.homeWP.toFixed(1)}%</td><td class="${cCl}">${sign}${l.chg.toFixed(1)}%</td><td>${l.li}</td>`;
+            
+            if (l.id === activeMemoId) {
+                const r2 = b.insertRow(); r2.className = `memo-active-row ${isBot ? 'row-bot' : 'row-top'}`;
+                r2.innerHTML = `<td colspan="6">↳ <input type="text" class="memo-edit-input" id="edit-input-${l.id}" value="${l.memo.replace(/"/g, '&quot;')}" onblur="saveMemo(${l.id})" onkeydown="if(event.key==='Enter') saveMemo(${l.id})"></td>`;
+            } else if (l.memo) {
+                const r2 = b.insertRow(); r2.className = `memo-display-row ${isBot ? 'row-bot' : 'row-top'}`;
+                r2.onclick = () => toggleMemoEdit(l.id);
+                r2.innerHTML = `<td colspan="6">↳ ${l.memo}</td>`;
+            }
         });
     }
 
     function exportCSV() {
         let csv = "No,Situation,Score,Home_WP,Delta_Offense,LI,Note\n";
-        logsData.forEach(l => csv += `${l.id},${l.sit},${l.sc},${l.homeWP.toFixed(2)},${l.chg.toFixed(2)},${l.li},"${l.memo.replace(/"/g, '""')}"\n`);
+        logsData.forEach(l => csv += `${l.id},${l.sit},${l.sc},${l.homeWP.toFixed(2)},${l.chg.toFixed(2)},${l.li},"${(l.memo || '').replace(/"/g, '""')}"\n`);
         const blob = new Blob(["\ufeff" + csv], { type: 'text/csv;charset=utf-8;' });
         const link = document.createElement("a"); link.href = URL.createObjectURL(blob);
         link.download = `WinExp_Log_${new Date().toISOString().slice(0,10)}.csv`; link.click();
     }
 
-    // [로직 대폭 개선] 하프 이닝별 최종 로그만 추출하여 전광판 복원
     function importCSV(event) {
         const file = event.target.files[0]; if (!file) return;
         const reader = new FileReader();
         reader.onload = function(e) {
-            const text = e.target.result;
-            const lines = text.split('\n').filter(l => l.trim() !== "");
-            const newLogs = [];
-            
-            // 전광판 초기화
+            const text = e.target.result, lines = text.split('\n').filter(l => l.trim() !== ""), newLogs = [];
             document.querySelectorAll('.inn-val').forEach(el => el.innerText = "-");
-
-            // 1. 하프 이닝별 마지막 총점을 저장할 객체
-            const halfInningScores = {}; 
-
+            const halfScores = {}; let lV = 0, lH = 0;
             for (let i = 1; i < lines.length; i++) {
-                const cols = lines[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
-                if (cols.length < 7) continue;
+                const cols = lines[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/); if (cols.length < 7) continue;
                 const log = { id: parseInt(cols[0]), sit: cols[1], sc: cols[2], homeWP: parseFloat(cols[3]), chg: parseFloat(cols[4]), li: cols[5], memo: cols[6].replace(/^"|"$/g, '').replace(/""/g, '"') };
-                newLogs.push(log);
-
-                const [inn, half] = log.sit.split('_');
-                const key = `${inn}_${half}`;
-                // 로그를 순서대로 읽으므로, 같은 하프이닝이면 덮어씌워져 결국 '마지막 총점'이 남음
-                halfInningScores[key] = log.sc.split(':').map(Number);
+                newLogs.push(log); const [inn, hf] = log.sit.split('_'); halfScores[`${inn}_${hf}`] = log.sc.split(':').map(Number);
             }
-
-            // 2. 하프 이닝별 최종 데이터를 기반으로 전광판 칸 채우기
-            let lastV = 0, lastH = 0;
-            for(let inn=1; inn<=11; inn++) {
-                const topKey = `${inn}_T`, botKey = `${inn}_B`;
-                
-                if (halfInningScores[topKey]) {
-                    const [vT, hT] = halfInningScores[topKey];
-                    document.querySelector(`#sb-v-row [data-inn="${inn}"]`).innerText = vT - lastV;
-                    lastV = vT;
-                }
-                if (halfInningScores[botKey]) {
-                    const [vB, hB] = halfInningScores[botKey];
-                    document.querySelector(`#sb-h-row [data-inn="${inn}"]`).innerText = hB - lastH;
-                    lastH = hB;
-                }
+            for(let n=1; n<=11; n++) {
+                if (halfScores[`${n}_T`]) { document.querySelector(`#sb-v-row [data-inn="${n}"]`).innerText = halfScores[`${n}_T`][0] - lV; lV = halfScores[`${n}_T`][0]; }
+                if (halfScores[`${n}_B`]) { document.querySelector(`#sb-h-row [data-inn="${n}"]`).innerText = halfScores[`${n}_B`][1] - lH; lH = halfScores[`${n}_B`][1]; }
             }
-
-            if (newLogs.length > 0) {
-                logsData = newLogs;
-                const last = logsData[logsData.length - 1];
-                const [vT, hT] = last.sc.split(':').map(Number);
-                const [inn, half, out, base] = last.sit.split('_');
-                
-                // 입력창을 파일의 최종 누적 총점으로 동기화
-                document.getElementById('curVScore').value = vT;
-                document.getElementById('curHScore').value = hT;
-                document.getElementById('inning').value = inn;
-                document.getElementById('half').value = (half === 'T' ? 'top' : 'bottom');
-                document.getElementById('outs').value = out;
-                document.getElementById('bases').value = base;
-                
-                renderLogs(); updateChart(); calculate(); 
-            }
+            if (newLogs.length > 0) { logsData = newLogs; const last = logsData[logsData.length - 1]; const [vT, hT] = last.sc.split(':').map(Number); const [inn, hf, out, base] = last.sit.split('_'); document.getElementById('curVScore').value = vT; document.getElementById('curHScore').value = hT; document.getElementById('inning').value = inn; document.getElementById('half').value = (hf === 'T' ? 'top' : 'bottom'); document.getElementById('outs').value = out; document.getElementById('bases').value = base; renderLogs(); updateChart(); calculate(); }
         };
         reader.readAsText(file);
     }
 
     function sortLogs(key) { if (currentSort.key === key) currentSort.dir *= -1; else { currentSort.key = key; currentSort.dir = 1; } renderLogs(); }
     function saveState(isLog = false) { historyStack.push(JSON.stringify({ vS: document.getElementById('curVScore').value, hS: document.getElementById('curHScore').value, inn: document.getElementById('inning').value, half: document.getElementById('half').value, outs: document.getElementById('outs').value, bases: document.getElementById('bases').value, env: document.getElementById('runEnv').value, isLog })); }
-    function undo() { if(logsData.length <= 1 && historyStack.length <= 2) return; const last = JSON.parse(historyStack.pop()); if(last.isLog) { logsData.pop(); renderLogs(); updateChart(); } const prev = JSON.parse(historyStack[historyStack.length - 1]); document.getElementById('curVScore').value = prev.vS; document.getElementById('curHScore').value = prev.hS; document.getElementById('inning').value = prev.inn; document.getElementById('half').value = prev.half; document.getElementById('outs').value = prev.outs; document.getElementById('bases').value = prev.bases; document.getElementById('runEnv').value = prev.env; calculate(); }
+    function undo() { if(logsData.length <= 1) return; logsData.pop(); renderLogs(); updateChart(); const last = logsData[logsData.length-1]; const [v,h] = last.sc.split(':'); document.getElementById('curVScore').value = v; document.getElementById('curHScore').value = h; calculate(); }
 
     document.querySelectorAll('select').forEach(el => el.addEventListener('change', calculate));
-    window.onload = () => { 
-        initChart(); 
-        logsData = [{ id: 1, sit: "1_T_0_0", sc: "0:0", homeWP: 50.0, chg: 0, li: "0.81", memo: "Play Ball!" }];
-        renderLogs(); updateChart(); calculate(); saveState(true);
-    };
+    window.onload = () => { initChart(); logsData = [{ id: 1, sit: "1_T_0_0", sc: "0:0", homeWP: 50.0, chg: 0, li: "0.81", memo: "Play Ball!" }]; renderLogs(); updateChart(); calculate(); saveState(true); };
 </script>
 </body>
 </html>
