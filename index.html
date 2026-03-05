@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>Win Expectancy Analytics Terminal v4.6</title>
+    <title>Win Expectancy Analytics Terminal v4.1</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root {
@@ -50,7 +50,7 @@
 
 <div class="container">
     <div class="top-bar">
-        <span style="color: var(--accent); font-weight: 900; letter-spacing: 1px;">Win Expectancy Terminal v4.6</span>
+        <span style="color: var(--accent); font-weight: 900; letter-spacing: 1px;">Win Expectancy Terminal v4.1</span>
         <div style="display: flex; gap: 10px; align-items: center;">
             <label style="font-size: 0.75rem;">ENV(RE):</label>
             <input type="number" id="runEnv" value="4.5" step="0.1" class="env-input" oninput="calculate()">
@@ -160,8 +160,10 @@
 
     function updateTotals() {
         let vSum = 0, hSum = 0;
-        document.querySelectorAll('#sb-v-row .inn-val').forEach(td => { if(td.innerText !== '-' && td.innerText !== '·') vSum = Math.max(vSum, Number(td.innerText)); });
-        document.querySelectorAll('#sb-h-row .inn-val').forEach(td => { if(td.innerText !== '-' && td.innerText !== '·') hSum = Math.max(hSum, Number(td.innerText)); });
+        // R값(누적 총점)은 각 이닝 칸의 마지막 숫자가 아니라, 모든 '이닝별 점수'의 합이어야 하므로 
+        // 입력창 로직에 맞춰 각 칸의 숫자를 모두 더함
+        document.querySelectorAll('#sb-v-row .inn-val').forEach(td => { if(td.innerText !== '-' && td.innerText !== '·') vSum += Number(td.innerText); });
+        document.querySelectorAll('#sb-h-row .inn-val').forEach(td => { if(td.innerText !== '-' && td.innerText !== '·') hSum += Number(td.innerText); });
         document.getElementById('vTotal').innerText = vSum;
         document.getElementById('hTotal').innerText = hSum;
     }
@@ -186,7 +188,7 @@
         const hS = Number(document.getElementById('hTotal').innerText);
         const i = Number(document.getElementById('inning').value), h = document.getElementById('half').value;
         const o = Number(document.getElementById('outs').value), b = document.getElementById('bases').value, env = Number(document.getElementById('runEnv').value);
-        const homeWP = getRawHomeWP(i, h, o, b, vS, hS, env);
+        const homeWP = getHomeWP(i, h, o, b, vS, hS, env);
         let li = 0;
         if (o < 3) {
             const nextO_WP = getHomeWP(i, h, o + 1, b, vS, hS, env);
@@ -197,31 +199,29 @@
     }
 
     function addLog() {
-        const vS = Number(document.getElementById('vTotal').innerText);
-        const hS = Number(document.getElementById('hTotal').innerText);
         const i = document.getElementById('inning').value, h = document.getElementById('half').value;
         const o = document.getElementById('outs').value, b = document.getElementById('bases').value;
-        const currentHomeWP = getRawHomeWP(Number(i), h, Number(o), b, vS, hS, Number(document.getElementById('runEnv').value)) * 100;
+        const vT = Number(document.getElementById('vTotal').innerText);
+        const hT = Number(document.getElementById('hTotal').innerText);
+        const currentHomeWP = parseFloat(document.getElementById('probDisplay').innerText);
         const li = document.getElementById('liDisplay').innerText;
         const m = document.getElementById('memo').value.trim();
         const sitStr = `${i}_${h==='top'?'T':'B'}_${o}_${b}`;
 
         let deltaOffense = logsData.length > 0 ? (h === 'top' ? -(currentHomeWP - logsData[logsData.length-1].homeWP) : (currentHomeWP - logsData[logsData.length-1].homeWP)) : 0;
 
-        logsData.push({ id: logsData.length + 1, sit: sitStr, sc: `${vS}:${hS}`, homeWP: currentHomeWP, chg: deltaOffense, li, memo: m });
+        logsData.push({ id: logsData.length + 1, sit: sitStr, sc: `${vT}:${hT}`, homeWP: currentHomeWP, chg: deltaOffense, li, memo: m });
         updateChart();
 
         if(Number(o) === 3) {
             if(h === 'top') {
                 document.getElementById('half').value = 'bottom';
-                document.getElementById('curVScore').value = vS;
-                document.getElementById('curHScore').value = hS;
+                document.getElementById('curHScore').value = "0";
             }
             else {
                 document.getElementById('inning').value = Math.min(11, Number(i) + 1);
                 document.getElementById('half').value = 'top';
-                document.getElementById('curVScore').value = vS;
-                document.getElementById('curHScore').value = hS;
+                document.getElementById('curVScore').value = "0";
             }
             document.getElementById('outs').value = "0"; document.getElementById('bases').value = "0";
         }
@@ -258,55 +258,45 @@
         link.download = `WinExp_Log_${new Date().toISOString().slice(0,10)}.csv`; link.click();
     }
 
-    // [개선] CSV 불러오기 시 전광판 점수 완벽 복구
+    // [중요] CSV 불러오기 시 전광판 이닝별 점수 역산 복구
     function importCSV(event) {
-        const file = event.target.files[0];
-        if (!file) return;
+        const file = event.target.files[0]; if (!file) return;
         const reader = new FileReader();
         reader.onload = function(e) {
-            const text = e.target.result;
-            const lines = text.split('\n').filter(l => l.trim() !== "");
+            const lines = e.target.result.split('\n').filter(l => l.trim() !== "");
             const newLogs = [];
-
-            // 전광판 리셋
-            document.querySelectorAll('.inn-val').forEach(el => el.innerText = "-");
+            
+            // 전광판 초기화
+            document.querySelectorAll('.inn-val').forEach(el => el.innerText = "0");
+            let lastVTotal = 0, lastHTotal = 0;
 
             for (let i = 1; i < lines.length; i++) {
                 const cols = lines[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
                 if (cols.length < 7) continue;
-                
-                const log = {
-                    id: parseInt(cols[0]), sit: cols[1], sc: cols[2],
-                    homeWP: parseFloat(cols[3]), chg: parseFloat(cols[4]), li: cols[5],
-                    memo: cols[6].replace(/^"|"$/g, '').replace(/""/g, '"')
-                };
+                const log = { id: parseInt(cols[0]), sit: cols[1], sc: cols[2], homeWP: parseFloat(cols[3]), chg: parseFloat(cols[4]), li: cols[5], memo: cols[6].replace(/^"|"$/g, '').replace(/""/g, '"') };
                 newLogs.push(log);
 
-                // [전광판 복구 로직]
                 const [inn, half] = log.sit.split('_');
-                const [vS, hS] = log.sc.split(':').map(Number);
+                const [vTAt, hTAt] = log.sc.split(':').map(Number);
                 
-                // 해당 이닝까지의 스코어를 전광판에 기입
-                const vCell = document.querySelector(`#sb-v-row [data-inn="${inn}"]`);
-                const hCell = document.querySelector(`#sb-h-row [data-inn="${inn}"]`);
-                if(vCell) vCell.innerText = vS;
-                if(hCell && half === 'B') hCell.innerText = hS;
+                if (half === 'T') {
+                    const diffV = vTAt - lastVTotal;
+                    document.querySelector(`#sb-v-row [data-inn="${inn}"]`).innerText = diffV;
+                    lastVTotal = vTAt;
+                } else {
+                    const diffH = hTAt - lastHTotal;
+                    document.querySelector(`#sb-h-row [data-inn="${inn}"]`).innerText = diffH;
+                    lastHTotal = hTAt;
+                }
             }
-
             if (newLogs.length > 0) {
                 logsData = newLogs;
                 const last = logsData[logsData.length - 1];
-                const [vS, hS] = last.sc.split(':').map(Number);
                 const [inn, half, out, base] = last.sit.split('_');
-
-                // 입력창 상태 복구
-                document.getElementById('curVScore').value = vS;
-                document.getElementById('curHScore').value = hS;
-                document.getElementById('inning').value = inn;
-                document.getElementById('half').value = (half === 'T' ? 'top' : 'bottom');
-                document.getElementById('outs').value = out;
-                document.getElementById('bases').value = base;
-
+                document.getElementById('curVScore').value = document.querySelector(`#sb-v-row [data-inn="${inn}"]`).innerText;
+                document.getElementById('curHScore').value = document.querySelector(`#sb-h-row [data-inn="${inn}"]`).innerText;
+                document.getElementById('inning').value = inn; document.getElementById('half').value = (half === 'T' ? 'top' : 'bottom');
+                document.getElementById('outs').value = out; document.getElementById('bases').value = base;
                 renderLogs(); updateChart(); calculate();
             }
         };
@@ -315,17 +305,7 @@
 
     function sortLogs(key) { if (currentSort.key === key) currentSort.dir *= -1; else { currentSort.key = key; currentSort.dir = 1; } renderLogs(); }
     function saveState(isLog = false) { historyStack.push(JSON.stringify({ vS: document.getElementById('curVScore').value, hS: document.getElementById('curHScore').value, inn: document.getElementById('inning').value, half: document.getElementById('half').value, outs: document.getElementById('outs').value, bases: document.getElementById('bases').value, env: document.getElementById('runEnv').value, isLog })); }
-    
-    function undo() {
-        if(logsData.length <= 1 && historyStack.length <= 2) return;
-        const last = JSON.parse(historyStack.pop());
-        if(last.isLog) { logsData.pop(); renderLogs(); updateChart(); }
-        const prev = JSON.parse(historyStack[historyStack.length - 1]);
-        document.getElementById('curVScore').value = prev.vS; document.getElementById('curHScore').value = prev.hS;
-        document.getElementById('inning').value = prev.inn; document.getElementById('half').value = prev.half;
-        document.getElementById('outs').value = prev.outs; document.getElementById('bases').value = prev.bases;
-        document.getElementById('runEnv').value = prev.env; calculate();
-    }
+    function undo() { if(logsData.length <= 1 && historyStack.length <= 2) return; const last = JSON.parse(historyStack.pop()); if(last.isLog) { logsData.pop(); renderLogs(); updateChart(); } const prev = JSON.parse(historyStack[historyStack.length - 1]); document.getElementById('curVScore').value = prev.vS; document.getElementById('curHScore').value = prev.hS; document.getElementById('inning').value = prev.inn; document.getElementById('half').value = prev.half; document.getElementById('outs').value = prev.outs; document.getElementById('bases').value = prev.bases; document.getElementById('runEnv').value = prev.env; calculate(); }
 
     document.querySelectorAll('select').forEach(el => el.addEventListener('change', calculate));
     window.onload = () => { initChart(); calculate(); saveState(); logsData.push({ id: 1, sit: "1_T_0_0", sc: "0:0", homeWP: 50.0, chg: 0, li: "0.81", memo: "Play Ball!" }); renderLogs(); };
