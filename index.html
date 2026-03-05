@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>WinExp Pro - Analytics Terminal v4.4</title>
+    <title>Win Expectancy Analytics Terminal v4.6</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root {
@@ -23,22 +23,26 @@
         .card { background: #1e293b; padding: 15px; border-radius: 8px; border: 1px solid #334155; }
         .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
         label { display: block; font-size: 0.75rem; color: var(--gray); margin-bottom: 4px; font-weight: bold; }
-        select, textarea { width: 100%; padding: 8px; background: #0f172a; color: #fff; border: 1px solid #334155; border-radius: 4px; font-size: 0.95rem; outline: none; }
+        select, textarea { width: 100%; padding: 8px; background: #0f172a; color: #fff; border: 1px solid #334155; border-radius: 4px; font-size: 0.95rem; outline: none; box-sizing: border-box; }
         .score-ctrl { display: flex; align-items: center; gap: 5px; background: rgba(255,255,255,0.05); padding: 5px; border-radius: 6px; }
         .score-display { width: 100%; background: transparent; color: var(--accent); border: none; font-size: 1.8rem; font-weight: 900; text-align: center; outline: none; }
         .btn-step { width: 30px; height: 35px; background: #334155; color: white; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; }
         .live-stats { margin-top: 15px; padding-top: 15px; border-top: 1px solid #334155; }
         .stat-value { font-size: 2.2rem; font-weight: 900; line-height: 1.2; }
-        .val-wp { color: var(--red); }
+        .val-wp { color: var(--red); } 
+        .chart-card { min-height: 380px; padding: 10px; position: relative; }
         .btn-group { display: flex; gap: 8px; margin-top: 10px; }
         button { flex: 1; padding: 10px; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 0.9rem; }
         .btn-save { background: var(--blue); color: white; }
+        .btn-undo { background: #334155; color: #94a3b8; }
         .btn-csv { background: #10b981; color: white; margin-top: 10px; }
         .btn-import { background: #6366f1; color: white; margin-top: 10px; }
         .log-section { margin-top: 10px; background: #1e293b; border-radius: 8px; overflow: hidden; border: 1px solid #334155; }
         .log-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
         .log-table th { background: #0f172a; color: var(--gray); padding: 12px; text-align: left; cursor: pointer; }
         .log-table td { padding: 10px 12px; border-bottom: 1px solid #334155; }
+        .change-plus { color: #4ade80; font-weight: bold; } 
+        .change-minus { color: #f87171; font-weight: bold; } 
         .memo-row td { background: rgba(15, 23, 42, 0.4); padding: 5px 12px 10px 40px; color: var(--gray); font-style: italic; border-bottom: 1px solid #334155; }
     </style>
 </head>
@@ -46,16 +50,33 @@
 
 <div class="container">
     <div class="top-bar">
-        <span style="color: var(--accent); font-weight: 900; letter-spacing: 1px;">WIN-EXP TERMINAL v4.4</span>
-        <div style="display: flex; gap: 10px; align-items: center;"><label style="font-size: 0.75rem;">ENV(RE):</label><input type="number" id="runEnv" value="4.5" step="0.1" class="env-input" oninput="calculate()"></div>
+        <span style="color: var(--accent); font-weight: 900; letter-spacing: 1px;">Win Expectancy Terminal v4.6</span>
+        <div style="display: flex; gap: 10px; align-items: center;">
+            <label style="font-size: 0.75rem;">ENV(RE):</label>
+            <input type="number" id="runEnv" value="4.5" step="0.1" class="env-input" oninput="calculate()">
+        </div>
     </div>
 
     <div class="scoreboard">
         <table class="sb-table">
-            <thead><tr><th style="width:90px; text-align:left;">TEAM</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th><th>7</th><th>8</th><th>9</th><th>10</th><th>11</th><th style="width:40px;">R</th></tr></thead>
+            <thead>
+                <tr><th style="width:90px; text-align:left;">TEAM</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th><th>7</th><th>8</th><th>9</th><th>10</th><th>11</th><th style="width:40px;">R</th></tr>
+            </thead>
             <tbody>
-                <tr id="sb-v-row"><td class="sb-team-name">VISITOR</td><td class="inn-val" data-inn="1">0</td><td class="inn-val" data-inn="2">0</td><td class="inn-val" data-inn="3">0</td><td class="inn-val" data-inn="4">0</td><td class="inn-val" data-inn="5">0</td><td class="inn-val" data-inn="6">0</td><td class="inn-val" data-inn="7">0</td><td class="inn-val" data-inn="8">0</td><td class="inn-val" data-inn="9">0</td><td class="inn-val" data-inn="10">0</td><td class="inn-val" data-inn="11">0</td><td class="sb-total" id="vTotal">0</td></tr>
-                <tr id="sb-h-row"><td class="sb-team-name">HOME</td><td class="inn-val" data-inn="1">0</td><td class="inn-val" data-inn="2">0</td><td class="inn-val" data-inn="3">0</td><td class="inn-val" data-inn="4">0</td><td class="inn-val" data-inn="5">0</td><td class="inn-val" data-inn="6">0</td><td class="inn-val" data-inn="7">0</td><td class="inn-val" data-inn="8">0</td><td class="inn-val" data-inn="9">0</td><td class="inn-val" data-inn="10">0</td><td class="inn-val" data-inn="11">0</td><td class="sb-total" id="hTotal">0</td></tr>
+                <tr id="sb-v-row">
+                    <td class="sb-team-name">VISITOR</td>
+                    <td class="inn-val" data-inn="1">-</td><td class="inn-val" data-inn="2">-</td><td class="inn-val" data-inn="3">-</td>
+                    <td class="inn-val" data-inn="4">-</td><td class="inn-val" data-inn="5">-</td><td class="inn-val" data-inn="6">-</td>
+                    <td class="inn-val" data-inn="7">-</td><td class="inn-val" data-inn="8">-</td><td class="inn-val" data-inn="9">-</td>
+                    <td class="inn-val" data-inn="10">-</td><td class="inn-val" data-inn="11">-</td><td class="sb-total" id="vTotal">0</td>
+                </tr>
+                <tr id="sb-h-row">
+                    <td class="sb-team-name">HOME</td>
+                    <td class="inn-val" data-inn="1">-</td><td class="inn-val" data-inn="2">-</td><td class="inn-val" data-inn="3">-</td>
+                    <td class="inn-val" data-inn="4">-</td><td class="inn-val" data-inn="5">-</td><td class="inn-val" data-inn="6">-</td>
+                    <td class="inn-val" data-inn="7">-</td><td class="inn-val" data-inn="8">-</td><td class="inn-val" data-inn="9">-</td>
+                    <td class="inn-val" data-inn="10">-</td><td class="inn-val" data-inn="11">-</td><td class="sb-total" id="hTotal">0</td>
+                </tr>
             </tbody>
         </table>
     </div>
@@ -72,7 +93,7 @@
             </div>
             <div class="field-row">
                 <div><label>OUTS</label><select id="outs" onchange="calculate()"><option value="0">0 Out</option><option value="1">1 Out</option><option value="2">2 Out</option><option value="3">3 Out</option></select></div>
-                <div><label>RUNNERS</label><select id="bases" onchange="calculate()"><option value="0">None</option><option value="1">1st</option><option value="2">2nd</option><option value="3">3rd</option><option value="12">1st, 2nd</option><option value="13">1st, 3rd</option><option value="23">2nd, 3rd</option><option value="123">Loaded</option></select></div>
+                <div><label>RUNNERS</label><select id="bases" onchange="calculate()"><option value="0">None</option><option value="1">1st</option><option value="2">2nd</option><option value="3">3rd</option><option value="12">1st,2nd</option><option value="13">1st,3rd</option><option value="23">2nd,3rd</option><option value="123">Loaded</option></select></div>
             </div>
             <textarea id="memo" rows="2" placeholder="MEMO..."></textarea>
             <div class="btn-group"><button class="btn-save" onclick="addLog()">LOG EVENT</button><button class="btn-undo" onclick="undo()">UNDO</button></div>
@@ -86,10 +107,16 @@
 
     <div class="log-section">
         <table class="log-table" id="logTable">
-            <thead><tr><th onclick="sortLogs('id')"># ↕</th><th onclick="sortLogs('sit')">SITUATION ↕</th><th onclick="sortLogs('sc')">SCORE ↕</th><th onclick="sortLogs('wp')">HOME WP ↕</th><th onclick="sortLogs('chg')">ΔOFFENSE ↕</th><th onclick="sortLogs('li')">LI ↕</th></tr></thead>
+            <thead>
+                <tr><th onclick="sortLogs('id')"># ↕</th><th onclick="sortLogs('sit')">SITUATION ↕</th><th onclick="sortLogs('sc')">SCORE ↕</th><th onclick="sortLogs('wp')">HOME WP ↕</th><th onclick="sortLogs('chg')">ΔOFFENSE ↕</th><th onclick="sortLogs('li')">LI ↕</th></tr>
+            </thead>
             <tbody id="logBody"></tbody>
         </table>
-        <div style="display: flex; gap: 5px; padding: 10px;"><button class="btn-csv" onclick="exportCSV()">EXPORT CSV</button><button class="btn-import" onclick="document.getElementById('csvInput').click()">IMPORT CSV</button><input type="file" id="csvInput" style="display:none" accept=".csv" onchange="importCSV(event)"></div>
+        <div style="display: flex; gap: 5px; padding: 10px;">
+            <button class="btn-import" onclick="document.getElementById('csvInput').click()">IMPORT CSV</button>
+            <input type="file" id="csvInput" style="display:none" accept=".csv" onchange="importCSV(event)">
+            <button class="btn-csv" onclick="exportCSV()">EXPORT CSV</button>
+        </div>
     </div>
 </div>
 
@@ -118,84 +145,83 @@
     }
 
     function refreshScoreboard() {
-        const curV = Number(document.getElementById('curVScore').value);
-        const curH = Number(document.getElementById('curHScore').value);
+        const v = Number(document.getElementById('curVScore').value);
+        const h = Number(document.getElementById('curHScore').value);
         const curI = Number(document.getElementById('inning').value);
         const half = document.getElementById('half').value;
-
-        // 현재 선택된 이닝의 점수를 실시간 반영
-        document.querySelector(`#sb-v-row [data-inn="${curI}"]`).innerText = curV;
-        if (half === 'bottom') {
-            document.querySelector(`#sb-h-row [data-inn="${curI}"]`).innerText = curH;
-        } else {
-            // TOP일 때는 BOT 점수는 아직 0이거나 이전 기록 상태여야 함 (여기선 0으로 표시)
-            // 단, 불러오기 시에는 이미 채워져 있을 것이므로 덮어씌우지 않도록 주의가 필요하지만
-            // 여기서는 '입력' 시점의 로직이므로 0으로 두는 것이 맞음
+        for(let i=1; i<=11; i++) {
+            const vCell = document.querySelector(`#sb-v-row [data-inn="${i}"]`);
+            const hCell = document.querySelector(`#sb-h-row [data-inn="${i}"]`);
+            vCell.innerText = (i === curI) ? v : (i < curI ? vCell.innerText : "-");
+            hCell.innerText = (i === curI && half === 'bottom') ? h : (i < curI || (i===curI && half==='top') ? hCell.innerText : "-");
         }
+        updateTotals();
+    }
 
+    function updateTotals() {
         let vSum = 0, hSum = 0;
-        document.querySelectorAll('.sb-table .inn-val').forEach(el => {
-            if (el.parentNode.id === 'sb-v-row') vSum += Number(el.innerText) || 0;
-            else hSum += Number(el.innerText) || 0;
-        });
+        document.querySelectorAll('#sb-v-row .inn-val').forEach(td => { if(td.innerText !== '-' && td.innerText !== '·') vSum = Math.max(vSum, Number(td.innerText)); });
+        document.querySelectorAll('#sb-h-row .inn-val').forEach(td => { if(td.innerText !== '-' && td.innerText !== '·') hSum = Math.max(hSum, Number(td.innerText)); });
         document.getElementById('vTotal').innerText = vSum;
         document.getElementById('hTotal').innerText = hSum;
     }
 
-    function getRawHomeWP(i, h, o, b, vs, hs, env) {
-        let lI = i, lH = h, lO = o, lB = b;
-        if(lO === 3) { lO = 0; lB = "0"; if(lH === 'top') lH = 'bottom'; else { lI = lI + 1; lH = 'top'; } }
+    function getHomeWP(i, h, o, b, vs, hs, env) {
+        let lookI = i, lookH = h, lookO = o, lookB = b;
+        if(lookO === 3) {
+            lookO = 0; lookB = "0";
+            if(lookH === 'top') lookH = 'bottom'; else { lookI = lookI + 1; lookH = 'top'; }
+        }
         const envF = 4.5 / env;
         let diff = Math.round((hs - vs) * envF);
         diff = Math.max(-15, Math.min(15, diff));
-        const sit = bigTable[`${lI > 9 ? 9 : lI}_${lH}_${lO}_${lB}`];
+        const sit = bigTable[`${lookI > 9 ? 9 : lookI}_${lookH}_${lookO}_${lookB}`];
         return sit ? sit.probs[diff.toString()] : (hs >= vs ? 1.0 : 0.0);
     }
 
     function calculate() {
         if(typeof bigTable === 'undefined') return;
         refreshScoreboard();
-        const vT = Number(document.getElementById('vTotal').innerText);
-        const hT = Number(document.getElementById('hTotal').innerText);
+        const vS = Number(document.getElementById('vTotal').innerText);
+        const hS = Number(document.getElementById('hTotal').innerText);
         const i = Number(document.getElementById('inning').value), h = document.getElementById('half').value;
         const o = Number(document.getElementById('outs').value), b = document.getElementById('bases').value, env = Number(document.getElementById('runEnv').value);
-        
-        let homeWP = getRawHomeWP(i, h, o, b, vT, hT, env);
-        if (o === 3) {
-            let nI = i, nH = h; if(h === 'top') nH = 'bottom'; else nI++;
-            homeWP = getRawHomeWP(nI, nH, 0, "0", vT, hT, env);
-        }
+        const homeWP = getRawHomeWP(i, h, o, b, vS, hS, env);
         let li = 0;
         if (o < 3) {
-            const nO_WP = getRawHomeWP(i, h, o + 1, b, vT, hT, env);
-            li = Math.abs(homeWP - nO_WP) / 0.027;
+            const nextO_WP = getHomeWP(i, h, o + 1, b, vS, hS, env);
+            li = Math.abs(homeWP - nextO_WP) / 0.027;
             document.getElementById('liDisplay').innerText = li.toFixed(2);
         } else { document.getElementById('liDisplay').innerText = "---"; }
         document.getElementById('probDisplay').innerText = (homeWP * 100).toFixed(1) + '%';
     }
 
     function addLog() {
+        const vS = Number(document.getElementById('vTotal').innerText);
+        const hS = Number(document.getElementById('hTotal').innerText);
         const i = document.getElementById('inning').value, h = document.getElementById('half').value;
         const o = document.getElementById('outs').value, b = document.getElementById('bases').value;
-        const vT = Number(document.getElementById('vTotal').innerText);
-        const hT = Number(document.getElementById('hTotal').innerText);
-        const cWP = parseFloat(document.getElementById('probDisplay').innerText);
+        const currentHomeWP = getRawHomeWP(Number(i), h, Number(o), b, vS, hS, Number(document.getElementById('runEnv').value)) * 100;
         const li = document.getElementById('liDisplay').innerText;
         const m = document.getElementById('memo').value.trim();
         const sitStr = `${i}_${h==='top'?'T':'B'}_${o}_${b}`;
 
-        let dOff = logsData.length > 0 ? (h === 'top' ? -(cWP - logsData[logsData.length-1].homeWP) : (cWP - logsData[logsData.length-1].homeWP)) : 0;
-        logsData.push({ id: logsData.length + 1, sit: sitStr, sc: `${vT}:${hT}`, homeWP: cWP, chg: dOff, li, memo: m });
+        let deltaOffense = logsData.length > 0 ? (h === 'top' ? -(currentHomeWP - logsData[logsData.length-1].homeWP) : (currentHomeWP - logsData[logsData.length-1].homeWP)) : 0;
+
+        logsData.push({ id: logsData.length + 1, sit: sitStr, sc: `${vS}:${hS}`, homeWP: currentHomeWP, chg: deltaOffense, li, memo: m });
         updateChart();
 
         if(Number(o) === 3) {
             if(h === 'top') {
                 document.getElementById('half').value = 'bottom';
-                document.getElementById('curHScore').value = "0";
-            } else {
+                document.getElementById('curVScore').value = vS;
+                document.getElementById('curHScore').value = hS;
+            }
+            else {
                 document.getElementById('inning').value = Math.min(11, Number(i) + 1);
                 document.getElementById('half').value = 'top';
-                document.getElementById('curVScore').value = "0";
+                document.getElementById('curVScore').value = vS;
+                document.getElementById('curHScore').value = hS;
             }
             document.getElementById('outs').value = "0"; document.getElementById('bases').value = "0";
         }
@@ -211,14 +237,15 @@
     function renderLogs() {
         const b = document.getElementById('logBody'); b.innerHTML = '';
         const sorted = [...logsData].sort((a, b) => {
-            let vA = a[currentSort.key], vB = b[currentSort.key];
-            if (['homeWP', 'chg', 'li'].includes(currentSort.key)) { vA = parseFloat(vA) || 0; vB = parseFloat(vB) || 0; }
-            return vA > vB ? currentSort.dir : -currentSort.dir;
+            let valA = a[currentSort.key], valB = b[currentSort.key];
+            if (['homeWP', 'chg', 'li'].includes(currentSort.key)) { valA = parseFloat(valA) || 0; valB = parseFloat(valB) || 0; }
+            return valA > valB ? currentSort.dir : -currentSort.dir;
         });
         sorted.forEach(l => {
             const r1 = b.insertRow();
-            const cCl = l.chg > 0 ? 'change-plus' : (l.chg < 0 ? 'change-minus' : '');
-            r1.innerHTML = `<td>${l.id}</td><td>${l.sit}</td><td>${l.sc}</td><td>${l.homeWP.toFixed(1)}%</td><td class="${cCl}">${l.chg.toFixed(1)}%</td><td>${l.li}</td>`;
+            const cClass = l.chg > 0 ? 'change-plus' : (l.chg < 0 ? 'change-minus' : '');
+            const chgText = l.id === 1 ? '-' : (l.chg > 0 ? '+' : '') + l.chg.toFixed(1) + '%';
+            r1.innerHTML = `<td>${l.id}</td><td>${l.sit}</td><td>${l.sc}</td><td>${l.homeWP.toFixed(1)}%</td><td class="${cClass}">${chgText}</td><td>${l.li}</td>`;
             if(l.memo) { const r2 = b.insertRow(); r2.className = 'memo-row'; r2.innerHTML = `<td colspan="6">↳ ${l.memo}</td>`; }
         });
     }
@@ -231,57 +258,55 @@
         link.download = `WinExp_Log_${new Date().toISOString().slice(0,10)}.csv`; link.click();
     }
 
-    // [불러오기 시 스코어보드 복구 기능 핵심]
+    // [개선] CSV 불러오기 시 전광판 점수 완벽 복구
     function importCSV(event) {
-        const file = event.target.files[0]; if (!file) return;
+        const file = event.target.files[0];
+        if (!file) return;
         const reader = new FileReader();
         reader.onload = function(e) {
-            const lines = e.target.result.split('\n').filter(l => l.trim() !== "");
+            const text = e.target.result;
+            const lines = text.split('\n').filter(l => l.trim() !== "");
             const newLogs = [];
-            
-            // 전광판 초기화
-            document.querySelectorAll('.inn-val').forEach(el => el.innerText = "0");
+
+            // 전광판 리셋
+            document.querySelectorAll('.inn-val').forEach(el => el.innerText = "-");
 
             for (let i = 1; i < lines.length; i++) {
                 const cols = lines[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
                 if (cols.length < 7) continue;
                 
-                const log = { id: parseInt(cols[0]), sit: cols[1], sc: cols[2], homeWP: parseFloat(cols[3]), chg: parseFloat(cols[4]), li: cols[5], memo: cols[6].replace(/^"|"$/g, '').replace(/""/g, '"') };
+                const log = {
+                    id: parseInt(cols[0]), sit: cols[1], sc: cols[2],
+                    homeWP: parseFloat(cols[3]), chg: parseFloat(cols[4]), li: cols[5],
+                    memo: cols[6].replace(/^"|"$/g, '').replace(/""/g, '"')
+                };
                 newLogs.push(log);
 
-                // [복구 로직] 각 로그의 상황을 읽어 전광판의 해당 칸을 업데이트
+                // [전광판 복구 로직]
                 const [inn, half] = log.sit.split('_');
-                const [vT, hT] = log.sc.split(':').map(Number);
+                const [vS, hS] = log.sc.split(':').map(Number);
                 
-                // 해당 이닝의 '누적 점수'가 아닌 '해당 하프이닝의 점수'를 찾아야 함
-                // 여기서는 CSV에 각 이닝 점수가 따로 없으므로, 이전 로그와의 차이를 통해 역산하거나 
-                // 단순히 해당 시점의 총점을 해당 칸에 덮어쓰는 방식으로 구현 (v4.3의 직관적 방식 유지)
-                if (half === 'T') {
-                    document.querySelector(`#sb-v-row [data-inn="${inn}"]`).innerText = vT;
-                } else {
-                    document.querySelector(`#sb-v-row [data-inn="${inn}"]`).innerText = vT;
-                    document.querySelector(`#sb-h-row [data-inn="${inn}"]`).innerText = hT;
-                }
+                // 해당 이닝까지의 스코어를 전광판에 기입
+                const vCell = document.querySelector(`#sb-v-row [data-inn="${inn}"]`);
+                const hCell = document.querySelector(`#sb-h-row [data-inn="${inn}"]`);
+                if(vCell) vCell.innerText = vS;
+                if(hCell && half === 'B') hCell.innerText = hS;
             }
-            
+
             if (newLogs.length > 0) {
-                logsData.length = 0; logsData.push(...newLogs);
+                logsData = newLogs;
                 const last = logsData[logsData.length - 1];
-                const [vT, hT] = last.sc.split(':').map(Number);
+                const [vS, hS] = last.sc.split(':').map(Number);
                 const [inn, half, out, base] = last.sit.split('_');
-                
-                // 입력창 세팅: 마지막 상황의 '해당 이닝 점수'를 가져와야 함
-                // 이 도구의 특성상 '총점'이 아닌 '이닝 점수'를 입력창에 넣으므로 전광판의 해당 칸 값을 가져옴
-                const vCellVal = document.querySelector(`#sb-v-row [data-inn="${inn}"]`).innerText;
-                const hCellVal = document.querySelector(`#sb-h-row [data-inn="${inn}"]`).innerText;
-                
-                document.getElementById('curVScore').value = vCellVal;
-                document.getElementById('curHScore').value = hCellVal;
+
+                // 입력창 상태 복구
+                document.getElementById('curVScore').value = vS;
+                document.getElementById('curHScore').value = hS;
                 document.getElementById('inning').value = inn;
                 document.getElementById('half').value = (half === 'T' ? 'top' : 'bottom');
                 document.getElementById('outs').value = out;
                 document.getElementById('bases').value = base;
-                
+
                 renderLogs(); updateChart(); calculate();
             }
         };
@@ -303,7 +328,7 @@
     }
 
     document.querySelectorAll('select').forEach(el => el.addEventListener('change', calculate));
-    window.onload = () => { initChart(); calculate(); saveState(); logsData.push({ id: 1, sit: "1_T_0_0", sc: "0:0", homeWP: 50.0, chg: 0, li: "0.81", memo: "GAME START" }); renderLogs(); };
+    window.onload = () => { initChart(); calculate(); saveState(); logsData.push({ id: 1, sit: "1_T_0_0", sc: "0:0", homeWP: 50.0, chg: 0, li: "0.81", memo: "Play Ball!" }); renderLogs(); };
 </script>
 </body>
 </html>
