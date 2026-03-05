@@ -65,17 +65,17 @@
             <tbody>
                 <tr id="sb-v-row">
                     <td class="sb-team-name">VISITOR</td>
-                    <td class="inn-val" data-inn="1">0</td><td class="inn-val" data-inn="2">0</td><td class="inn-val" data-inn="3">0</td>
-                    <td class="inn-val" data-inn="4">0</td><td class="inn-val" data-inn="5">0</td><td class="inn-val" data-inn="6">0</td>
-                    <td class="inn-val" data-inn="7">0</td><td class="inn-val" data-inn="8">0</td><td class="inn-val" data-inn="9">0</td>
-                    <td class="inn-val" data-inn="10">0</td><td class="inn-val" data-inn="11">0</td><td class="sb-total" id="vTotal">0</td>
+                    <td class="inn-val" data-inn="1">-</td><td class="inn-val" data-inn="2">-</td><td class="inn-val" data-inn="3">-</td>
+                    <td class="inn-val" data-inn="4">-</td><td class="inn-val" data-inn="5">-</td><td class="inn-val" data-inn="6">-</td>
+                    <td class="inn-val" data-inn="7">-</td><td class="inn-val" data-inn="8">-</td><td class="inn-val" data-inn="9">-</td>
+                    <td class="inn-val" data-inn="10">-</td><td class="inn-val" data-inn="11">-</td><td class="sb-total" id="vTotal">0</td>
                 </tr>
                 <tr id="sb-h-row">
                     <td class="sb-team-name">HOME</td>
-                    <td class="inn-val" data-inn="1">0</td><td class="inn-val" data-inn="2">0</td><td class="inn-val" data-inn="3">0</td>
-                    <td class="inn-val" data-inn="4">0</td><td class="inn-val" data-inn="5">0</td><td class="inn-val" data-inn="6">0</td>
-                    <td class="inn-val" data-inn="7">0</td><td class="inn-val" data-inn="8">0</td><td class="inn-val" data-inn="9">0</td>
-                    <td class="inn-val" data-inn="10">0</td><td class="inn-val" data-inn="11">0</td><td class="sb-total" id="hTotal">0</td>
+                    <td class="inn-val" data-inn="1">-</td><td class="inn-val" data-inn="2">-</td><td class="inn-val" data-inn="3">-</td>
+                    <td class="inn-val" data-inn="4">-</td><td class="inn-val" data-inn="5">-</td><td class="inn-val" data-inn="6">-</td>
+                    <td class="inn-val" data-inn="7">-</td><td class="inn-val" data-inn="8">-</td><td class="inn-val" data-inn="9">-</td>
+                    <td class="inn-val" data-inn="10">-</td><td class="inn-val" data-inn="11">-</td><td class="sb-total" id="hTotal">0</td>
                 </tr>
             </tbody>
         </table>
@@ -93,7 +93,7 @@
             </div>
             <div class="field-row">
                 <div><label>OUTS</label><select id="outs" onchange="calculate()"><option value="0">0 Out</option><option value="1">1 Out</option><option value="2">2 Out</option><option value="3">3 Out</option></select></div>
-                <div><label>RUNNERS</label><select id="bases" onchange="calculate()"><option value="0">None</option><option value="1">1st</option><option value="2">2nd</option><option value="3">3rd</option><option value="12">1st,2nd</option><option value="13">1st,3rd</option><option value="23">2nd,3rd</option><option value="123">Loaded</option></select></div>
+                <div><label>RUNNERS</label><select id="bases" onchange="calculate()"><option value="0">None</option><option value="1">1st</option><option value="2">2nd</option><option value="3">3rd</option><option value="12">1st, 2nd</option><option value="13">1st, 3rd</option><option value="23">2nd, 3rd</option><option value="123">Loaded</option></select></div>
             </div>
             <textarea id="memo" rows="2" placeholder="MEMO..."></textarea>
             <div class="btn-group"><button class="btn-save" onclick="addLog()">LOG EVENT</button><button class="btn-undo" onclick="undo()">UNDO</button></div>
@@ -149,12 +149,23 @@
         const h = Number(document.getElementById('curHScore').value);
         const curI = Number(document.getElementById('inning').value);
         const half = document.getElementById('half').value;
-        
-        const vCell = document.querySelector(`#sb-v-row [data-inn="${curI}"]`);
-        const hCell = document.querySelector(`#sb-h-row [data-inn="${curI}"]`);
-        if(vCell) vCell.innerText = v;
-        if(hCell) hCell.innerText = (half === 'bottom') ? h : hCell.innerText;
+        for(let i=1; i<=11; i++) {
+            const vCell = document.querySelector(`#sb-v-row [data-inn="${i}"]`);
+            const hCell = document.querySelector(`#sb-h-row [data-inn="${i}"]`);
+            if (i === curI) {
+                vCell.innerText = v;
+                hCell.innerText = (half === 'bottom') ? h : (hCell.innerText === '-' || hCell.innerText === '·' ? '·' : hCell.innerText);
+            } else if (i < curI) {
+                // 이전 이닝 값 유지 (import 시 채워짐)
+            } else {
+                vCell.innerText = "-";
+                hCell.innerText = "-";
+            }
+        }
+        updateTotals();
+    }
 
+    function updateTotals() {
         let vSum = 0, hSum = 0;
         document.querySelectorAll('.inn-val').forEach(td => {
             const val = Number(td.innerText) || 0;
@@ -167,10 +178,7 @@
 
     function getHomeWP(i, h, o, b, vs, hs, env) {
         let lookI = i, lookH = h, lookO = o, lookB = b;
-        if(lookO === 3) {
-            lookO = 0; lookB = "0";
-            if(lookH === 'top') lookH = 'bottom'; else { lookI = lookI + 1; lookH = 'top'; }
-        }
+        if(lookO === 3) { lookO = 0; lookB = "0"; if(lookH === 'top') lookH = 'bottom'; else { lookI = lookI + 1; lookH = 'top'; } }
         const envF = 4.5 / env;
         let diff = Math.round((hs - vs) * envF);
         diff = Math.max(-15, Math.min(15, diff));
@@ -181,15 +189,19 @@
     function calculate() {
         if(typeof bigTable === 'undefined') return;
         refreshScoreboard();
-        const vTotal = Number(document.getElementById('vTotal').innerText);
-        const hTotal = Number(document.getElementById('hTotal').innerText);
+        const vS = Number(document.getElementById('vTotal').innerText);
+        const hS = Number(document.getElementById('hTotal').innerText);
         const i = Number(document.getElementById('inning').value), h = document.getElementById('half').value;
         const o = Number(document.getElementById('outs').value), b = document.getElementById('bases').value, env = Number(document.getElementById('runEnv').value);
-        const homeWP = getRawHomeWP(i, h, o, b, vTotal, hTotal, env);
+        let homeWP = getHomeWP(i, h, o, b, vS, hS, env);
+        if (o === 3) {
+            let nI = i, nH = h; if(h === 'top') nH = 'bottom'; else nI++;
+            homeWP = getHomeWP(nI, nH, 0, "0", vS, hS, env);
+        }
         let li = 0;
         if (o < 3) {
-            const nextO_WP = getRawHomeWP(i, h, o + 1, b, vTotal, hTotal, env);
-            li = Math.abs(homeWP - nextO_WP) / 0.027;
+            const nO_WP = getHomeWP(i, h, o + 1, b, vS, hS, env);
+            li = Math.abs(homeWP - nO_WP) / 0.027;
             document.getElementById('liDisplay').innerText = li.toFixed(2);
         } else { document.getElementById('liDisplay').innerText = "---"; }
         document.getElementById('probDisplay').innerText = (homeWP * 100).toFixed(1) + '%';
@@ -198,14 +210,14 @@
     function addLog() {
         const i = document.getElementById('inning').value, h = document.getElementById('half').value;
         const o = document.getElementById('outs').value, b = document.getElementById('bases').value;
-        const vTotal = Number(document.getElementById('vTotal').innerText);
-        const hTotal = Number(document.getElementById('hTotal').innerText);
+        const vT = Number(document.getElementById('vTotal').innerText);
+        const hT = Number(document.getElementById('hTotal').innerText);
         const currentHomeWP = parseFloat(document.getElementById('probDisplay').innerText);
         const li = document.getElementById('liDisplay').innerText;
         const m = document.getElementById('memo').value.trim();
         const sitStr = `${i}_${h==='top'?'T':'B'}_${o}_${b}`;
         let deltaOffense = logsData.length > 0 ? (h === 'top' ? -(currentHomeWP - logsData[logsData.length-1].homeWP) : (currentHomeWP - logsData[logsData.length-1].homeWP)) : 0;
-        logsData.push({ id: logsData.length + 1, sit: sitStr, sc: `${vTotal}:${hTotal}`, homeWP: currentHomeWP, chg: deltaOffense, li, memo: m });
+        logsData.push({ id: logsData.length + 1, sit: sitStr, sc: `${vT}:${hT}`, homeWP: currentHomeWP, chg: deltaOffense, li, memo: m });
         updateChart();
         if(Number(o) === 3) {
             if(h === 'top') { document.getElementById('half').value = 'bottom'; document.getElementById('curHScore').value = "0"; }
@@ -230,8 +242,8 @@
         });
         sorted.forEach(l => {
             const r1 = b.insertRow();
-            const cClass = l.chg > 0 ? 'change-plus' : (l.chg < 0 ? 'change-minus' : '');
-            r1.innerHTML = `<td>${l.id}</td><td>${l.sit}</td><td>${l.sc}</td><td>${l.homeWP.toFixed(1)}%</td><td class="${cClass}">${(l.id===1?'-':(l.chg>0?'+':'')+l.chg.toFixed(1)+'%')}</td><td>${l.li}</td>`;
+            const cCl = l.chg > 0 ? 'change-plus' : (l.chg < 0 ? 'change-minus' : '');
+            r1.innerHTML = `<td>${l.id}</td><td>${l.sit}</td><td>${l.sc}</td><td>${l.homeWP.toFixed(1)}%</td><td class="${cCl}">${(l.id===1?'-':(l.chg>0?'+':'')+l.chg.toFixed(1)+'%')}</td><td>${l.li}</td>`;
             if(l.memo) { const r2 = b.insertRow(); r2.className = 'memo-row'; r2.innerHTML = `<td colspan="6">↳ ${l.memo}</td>`; }
         });
     }
@@ -244,6 +256,7 @@
         link.download = `WinExp_Log_${new Date().toISOString().slice(0,10)}.csv`; link.click();
     }
 
+    // [로직 수정 완료] 누적 총점에서 차감을 통해 이닝별 득점을 복구하여 전광판에 표시
     function importCSV(event) {
         const file = event.target.files[0]; if (!file) return;
         const reader = new FileReader();
@@ -251,17 +264,28 @@
             const text = e.target.result;
             const lines = text.split('\n').filter(l => l.trim() !== "");
             const newLogs = [];
-            document.querySelectorAll('.inn-val').forEach(el => el.innerText = "0");
+            document.querySelectorAll('.inn-val').forEach(el => el.innerText = "-");
+            
             let lastVTotal = 0, lastHTotal = 0;
+
             for (let i = 1; i < lines.length; i++) {
                 const cols = lines[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
                 if (cols.length < 7) continue;
                 const log = { id: parseInt(cols[0]), sit: cols[1], sc: cols[2], homeWP: parseFloat(cols[3]), chg: parseFloat(cols[4]), li: cols[5], memo: cols[6].replace(/^"|"$/g, '').replace(/""/g, '"') };
                 newLogs.push(log);
+
                 const [inn, half] = log.sit.split('_');
                 const [vTAt, hTAt] = log.sc.split(':').map(Number);
-                if (half === 'T') { document.querySelector(`#sb-v-row [data-inn="${inn}"]`).innerText = vTAt - lastVTotal; lastVTotal = vTAt; } 
-                else { document.querySelector(`#sb-h-row [data-inn="${inn}"]`).innerText = hTAt - lastHTotal; lastHTotal = hTAt; }
+                
+                if (half === 'T') {
+                    const diffV = vTAt - lastVTotal;
+                    document.querySelector(`#sb-v-row [data-inn="${inn}"]`).innerText = diffV;
+                    lastVTotal = vTAt;
+                } else {
+                    const diffH = hTAt - lastHTotal;
+                    document.querySelector(`#sb-h-row [data-inn="${inn}"]`).innerText = diffH;
+                    lastHTotal = hTAt;
+                }
             }
             if (newLogs.length > 0) {
                 logsData = newLogs;
@@ -271,7 +295,7 @@
                 document.getElementById('curHScore').value = document.querySelector(`#sb-h-row [data-inn="${inn}"]`).innerText;
                 document.getElementById('inning').value = inn; document.getElementById('half').value = (half === 'T' ? 'top' : 'bottom');
                 document.getElementById('outs').value = out; document.getElementById('bases').value = base;
-                renderLogs(); updateChart(); calculate(); 
+                renderLogs(); updateChart(); calculate();
             }
         };
         reader.readAsText(file);
