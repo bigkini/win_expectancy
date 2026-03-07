@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>WinExp Pro Terminal v7.2</title>
+    <title>WinExp Pro Terminal v7.3</title>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
@@ -55,7 +55,7 @@
 
 <div id="app" class="container">
     <div class="top-bar">
-        <span style="color: var(--accent); font-weight: 900;">WinExp Pro v7.2</span>
+        <span style="color: var(--accent); font-weight: 900;">WinExp Pro v7.3</span>
         <div style="display: flex; gap: 10px; align-items: center;">
             <label style="font-size: 0.75rem;">ENV(RE):</label>
             <input type="number" v-model="runEnv" step="0.1" style="width:45px; background:var(--dark); color:var(--accent); border:1px solid #334155; text-align:center;">
@@ -225,16 +225,19 @@
                 const blob = new Blob(["\ufeff" + csv], { type: 'text/csv;charset=utf-8;' });
                 const link = document.createElement("a");
                 link.href = URL.createObjectURL(blob);
-                link.download = `WinExp_Log_${new Date().toISOString().slice(0,10)}.csv`;
+                link.download = `WinExp_Final_Log_${new Date().toISOString().slice(0,10)}.csv`;
                 link.click();
             };
 
             const addLog = () => {
+                // [핵심] 1. '타석 시작 시점'의 WP와 LI를 변수에 먼저 고정(박제) ㅡ,.ㅡ
                 const wpForLog = parseFloat(liveWP.value);
                 const liForLog = liveLI.value;
-                const lastWP = logs.value[logs.value.length-1].homeWP;
+                const lastLog = logs.value[logs.value.length - 1];
+                const lastWP = lastLog ? lastLog.homeWP : 50.0;
                 const delta = sit.half === 'top' ? -(wpForLog - lastWP) : (wpForLog - lastWP);
                 
+                // 2. 로그 기록
                 logs.value.push({
                     id: logs.value.length + 1,
                     sit: `${sit.inning}_${sit.half==='top'?'T':'B'}_${sit.outs}_${sit.bases}`,
@@ -242,8 +245,10 @@
                     homeWP: wpForLog, chg: delta, li: liForLog, memo: sit.memo
                 });
 
+                // 3. 종료 여부 확인 후 자동 내보내기
                 if (isFinishConditionMet.value) exportCSV();
 
+                // 4. 상황 전환 (3아웃 시)
                 if (sit.outs === 3) {
                     if (sit.half === 'top') sit.half = 'bottom';
                     else { if (sit.inning < 11) { sit.inning++; sit.half = 'top'; } }
