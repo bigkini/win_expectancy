@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>WinExp Pro Terminal v7.1</title>
+    <title>WinExp Pro Terminal v7.2</title>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
@@ -55,7 +55,7 @@
 
 <div id="app" class="container">
     <div class="top-bar">
-        <span style="color: var(--accent); font-weight: 900;">WinExp Pro v7.1</span>
+        <span style="color: var(--accent); font-weight: 900;">WinExp Pro v7.2</span>
         <div style="display: flex; gap: 10px; align-items: center;">
             <label style="font-size: 0.75rem;">ENV(RE):</label>
             <input type="number" v-model="runEnv" step="0.1" style="width:45px; background:var(--dark); color:var(--accent); border:1px solid #334155; text-align:center;">
@@ -112,7 +112,7 @@
                 </div>
             </div>
             <textarea v-model="sit.memo" rows="2" placeholder="MEMO..."></textarea>
-            <div v-if="checkGameSet()" class="gameset-msg">⚾ GAME SET CONDITION MET - AUTO EXPORT ENABLED</div>
+            <div v-if="isFinishConditionMet" class="gameset-msg">⚾ GAME SET CONDITION MET - AUTO EXPORT ON LOG</div>
             <div class="btn-row">
                 <button class="btn-save" @click="addLog">LOG EVENT</button>
                 <button class="btn-undo" @click="undo">UNDO</button>
@@ -174,31 +174,28 @@
                 {label:'HOME WP', key:'homeWP'}, {label:'ΔOFFENSE', key:'chg'}, {label:'LI', key:'li'}
             ];
 
-            // [경기 종료 조건 체크 함수] ㅡ,.ㅡ
-            const checkGameSet = () => {
-                const isBottom = sit.half === 'bottom';
-                // 9회말 이후 홈팀 리드 시
-                if (sit.inning >= 9 && isBottom && currentScore.home > currentScore.visitor) return true;
+            const isFinishConditionMet = computed(() => {
+                if (sit.inning >= 9 && sit.half === 'bottom' && currentScore.home > currentScore.visitor) return true;
                 return false;
-            };
+            });
 
             const getInningScore = (inning, half) => {
                 const currentHalfLogs = logs.value.filter(l => l.sit.startsWith(`${inning}_${half}`));
                 if (currentHalfLogs.length === 0) {
-                    const hasLaterLogs = logs.value.some(l => {
+                    const hasLater = logs.value.some(l => {
                         const [i, h] = l.sit.split('_');
                         return Number(i) > inning || (Number(i) === inning && (half === 'T' || h === 'B'));
                     });
-                    return hasLaterLogs ? '·' : '-';
+                    return hasLater ? '·' : '-';
                 }
-                const lastLogOfThisHalf = currentHalfLogs[currentHalfLogs.length-1];
-                const prevHalfLogs = logs.value.filter(l => {
+                const lastOfHalf = currentHalfLogs[currentHalfLogs.length-1];
+                const prevLogs = logs.value.filter(l => {
                     const [i, h] = l.sit.split('_');
                     return Number(i) < inning || (Number(i) === inning && half === 'B' && h === 'T');
                 });
-                const lastTotal = prevHalfLogs.length > 0 ? prevHalfLogs[prevHalfLogs.length-1].sc.split(':').map(Number) : [0, 0];
-                const currentTotal = lastLogOfThisHalf.sc.split(':').map(Number);
-                return half === 'T' ? currentTotal[0] - lastTotal[0] : currentTotal[1] - lastTotal[1];
+                const lastSc = prevLogs.length > 0 ? prevLogs[prevLogs.length-1].sc.split(':').map(Number) : [0, 0];
+                const currSc = lastOfHalf.sc.split(':').map(Number);
+                return half === 'T' ? currSc[0] - lastSc[0] : currSc[1] - lastSc[1];
             };
 
             const liveWP = computed(() => {
@@ -228,31 +225,25 @@
                 const blob = new Blob(["\ufeff" + csv], { type: 'text/csv;charset=utf-8;' });
                 const link = document.createElement("a");
                 link.href = URL.createObjectURL(blob);
-                link.download = `WinExp_Final_Log_${new Date().toISOString().slice(0,10)}.csv`;
+                link.download = `WinExp_Log_${new Date().toISOString().slice(0,10)}.csv`;
                 link.click();
             };
 
             const addLog = () => {
-                const currentWPForLog = parseFloat(liveWP.value);
-                const currentLIForLog = liveLI.value;
-                const lastLog = logs.value[logs.value.length-1];
-                const lastWP = lastLog ? lastLog.homeWP : 50.0;
-                const delta = sit.half === 'top' ? -(currentWPForLog - lastWP) : (currentWPForLog - lastWP);
+                const wpForLog = parseFloat(liveWP.value);
+                const liForLog = liveLI.value;
+                const lastWP = logs.value[logs.value.length-1].homeWP;
+                const delta = sit.half === 'top' ? -(wpForLog - lastWP) : (wpForLog - lastWP);
                 
-                // 1. 로그 기록
                 logs.value.push({
                     id: logs.value.length + 1,
                     sit: `${sit.inning}_${sit.half==='top'?'T':'B'}_${sit.outs}_${sit.bases}`,
                     sc: `${currentScore.visitor}:${currentScore.home}`,
-                    homeWP: currentWPForLog, chg: delta, li: currentLIForLog, memo: sit.memo
+                    homeWP: wpForLog, chg: delta, li: liForLog, memo: sit.memo
                 });
 
-                // 2. 종료 여부 먼저 확인 후 자동 내보내기 ㅡ,.ㅡ
-                if (checkGameSet()) {
-                    exportCSV();
-                }
+                if (isFinishConditionMet.value) exportCSV();
 
-                // 3. 상황 전환 (3아웃 시)
                 if (sit.outs === 3) {
                     if (sit.half === 'top') sit.half = 'bottom';
                     else { if (sit.inning < 11) { sit.inning++; sit.half = 'top'; } }
@@ -275,6 +266,7 @@
             const triggerImport = () => fileInput.value.click();
             const handleImport = (e) => {
                 const file = e.target.files[0];
+                if (!file) return;
                 const reader = new FileReader();
                 reader.onload = (event) => {
                     const lines = event.target.result.split('\n').filter(l => l.trim() !== "");
@@ -282,11 +274,15 @@
                         const cols = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
                         return { id: parseInt(cols[0]), sit: cols[1], sc: cols[2], homeWP: parseFloat(cols[3]), chg: parseFloat(cols[4]), li: cols[5], memo: cols[6].replace(/^"|"$/g, '').replace(/""/g, '"') };
                     });
-                    logs.value = newLogs;
-                    const last = newLogs[newLogs.length-1];
-                    const [v, h] = last.sc.split(':').map(Number);
-                    currentScore.visitor = v; currentScore.home = h;
-                    updateChart();
+                    if (newLogs.length > 0) {
+                        logs.value = newLogs;
+                        const last = newLogs[newLogs.length-1];
+                        const [v, h] = last.sc.split(':').map(Number);
+                        currentScore.visitor = v; currentScore.home = h;
+                        const [inn, hf, out, base] = last.sit.split('_');
+                        sit.inning = parseInt(inn); sit.half = (hf === 'T') ? 'top' : 'bottom'; sit.outs = parseInt(out); sit.bases = base;
+                        updateChart();
+                    }
                 };
                 reader.readAsText(file);
             };
@@ -309,7 +305,7 @@
                 updateChart();
             });
 
-            return { logs, sit, currentScore, teams, runEnv, liveWP, liveLI, headers, sortedLogs, activeMemoId, checkGameSet, sort, addLog, undo, getInningScore, triggerImport, handleImport, exportCSV, fileInput };
+            return { logs, sit, currentScore, teams, runEnv, liveWP, liveLI, headers, sortedLogs, activeMemoId, isFinishConditionMet, sort, addLog, undo, getInningScore, triggerImport, handleImport, exportCSV, fileInput };
         }
     })
     .directive('focus', { mounted: (el) => el.focus() })
