@@ -68,8 +68,8 @@
     <div class="main-grid">
         <div class="card">
             <div class="field-row">
-                <div><label style="color: #3b82f6;">VISITOR SCORE (TOTAL)</label><div style="display:flex; gap:5px; background:rgba(255,255,255,0.05); padding:5px; border-radius:6px;"><button class="btn-step" onclick="changeScore('curVScore', -1)">-</button><input type="number" id="curVScore" value="0" class="score-display" readonly><button class="btn-step" onclick="changeScore('curVScore', 1)">+</button></div></div>
-                <div><label style="color: var(--red);">HOME SCORE (TOTAL)</label><div style="display:flex; gap:5px; background:rgba(255,255,255,0.05); padding:5px; border-radius:6px;"><button class="btn-step" onclick="changeScore('curHScore', -1)">-</button><input type="number" id="curHScore" value="0" class="score-display" readonly><button class="btn-step" onclick="changeScore('curHScore', 1)">+</button></div></div>
+                <div><label style="color: #3b82f6;">VISITOR SCORE</label><div style="display:flex; gap:5px; background:rgba(255,255,255,0.05); padding:5px; border-radius:6px;"><button class="btn-step" onclick="changeScore('curVScore', -1)">-</button><input type="number" id="curVScore" value="0" class="score-display" readonly><button class="btn-step" onclick="changeScore('curVScore', 1)">+</button></div></div>
+                <div><label style="color: var(--red);">HOME SCORE</label><div style="display:flex; gap:5px; background:rgba(255,255,255,0.05); padding:5px; border-radius:6px;"><button class="btn-step" onclick="changeScore('curHScore', -1)">-</button><input type="number" id="curHScore" value="0" class="score-display" readonly><button class="btn-step" onclick="changeScore('curHScore', 1)">+</button></div></div>
             </div>
             <div class="field-row">
                 <div><label>INNING</label><select id="inning" onchange="calculate()"><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10</option><option value="11">11</option></select></div>
@@ -228,3 +228,4 @@
 </script>
 </body>
 </html>
+
