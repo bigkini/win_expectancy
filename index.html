@@ -254,9 +254,16 @@
             const exportCSV = () => {
                 let csv = "No,Situation,Score,Home_WP,Delta_Offense,LI,Note\n";
                 logs.value.forEach(l => csv += `${l.id},${l.sit},${l.sc},${l.homeWP.toFixed(2)},${l.chg.toFixed(2)},${l.li},"${(l.memo || '').replace(/"/g, '""')}"\n`);
+    
                 const blob = new Blob(["\ufeff" + csv], { type: 'text/csv;charset=utf-8;' });
-                const link = document.createElement("a"); link.href = URL.createObjectURL(blob);
-                link.download = `WinExp_Final_Log_${new Date().toISOString().slice(0,10)}.csv`; link.click();
+                const link = document.createElement("a");
+                link.href = URL.createObjectURL(blob);
+    
+                const dateStr = new Date().toISOString().slice(0,10);
+                const fileName = `${teams.visitor}_vs_${teams.home}_Log_${dateStr}.csv`;
+    
+                link.download = fileName;
+                link.click();
             };
             const undo = () => { if(logs.value.length > 1) { logs.value.pop(); updateChart(); } };
             const sort = (key) => { if(sortKey.value === key) sortDir.value *= -1; else { sortKey.value = key; sortDir.value = 1; } };
@@ -305,3 +312,4 @@
 </script>
 </body>
 </html>
+
