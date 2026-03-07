@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>WinExp Pro Terminal v7.3</title>
+    <title>WinExp Pro Terminal v7.5</title>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
@@ -55,7 +55,7 @@
 
 <div id="app" class="container">
     <div class="top-bar">
-        <span style="color: var(--accent); font-weight: 900;">WinExp Pro v7.3</span>
+        <span style="color: var(--accent); font-weight: 900;">WinExp Pro v7.5</span>
         <div style="display: flex; gap: 10px; align-items: center;">
             <label style="font-size: 0.75rem;">ENV(RE):</label>
             <input type="number" v-model="runEnv" step="0.1" style="width:45px; background:var(--dark); color:var(--accent); border:1px solid #334155; text-align:center;">
@@ -158,6 +158,7 @@
 
     createApp({
         setup() {
+            // [복구] #1 Play Ball 로그 미리 생성 ㅡ,.ㅡ
             const logs = ref([{ id: 1, sit: "1_T_0_0", sc: "0:0", homeWP: 50.0, chg: 0, li: "0.81", memo: "Play Ball!" }]);
             const currentScore = reactive({ visitor: 0, home: 0 });
             const sit = reactive({ inning: 1, half: 'top', outs: 0, bases: '0', memo: '' });
@@ -230,25 +231,28 @@
             };
 
             const addLog = () => {
-                // [핵심] 1. '타석 시작 시점'의 WP와 LI를 변수에 먼저 고정(박제) ㅡ,.ㅡ
-                const wpForLog = parseFloat(liveWP.value);
-                const liForLog = liveLI.value;
+                // [수정] 현재 타석 시작 시점의 UI 값을 변수에 즉시 고정 (박제) ㅡ,.ㅡ [cite: 2026-03-07]
+                const wpAtStartOfPlateAppearance = parseFloat(liveWP.value);
+                const liAtStartOfPlateAppearance = liveLI.value;
+                
                 const lastLog = logs.value[logs.value.length - 1];
                 const lastWP = lastLog ? lastLog.homeWP : 50.0;
-                const delta = sit.half === 'top' ? -(wpForLog - lastWP) : (wpForLog - lastWP);
+                const delta = sit.half === 'top' ? -(wpAtStartOfPlateAppearance - lastWP) : (wpAtStartOfPlateAppearance - lastWP);
                 
-                // 2. 로그 기록
+                // 1. 로그에 현재 UI 값을 기록 [cite: 2026-03-07]
                 logs.value.push({
                     id: logs.value.length + 1,
                     sit: `${sit.inning}_${sit.half==='top'?'T':'B'}_${sit.outs}_${sit.bases}`,
                     sc: `${currentScore.visitor}:${currentScore.home}`,
-                    homeWP: wpForLog, chg: delta, li: liForLog, memo: sit.memo
+                    homeWP: wpAtStartOfPlateAppearance, 
+                    chg: delta, 
+                    li: liAtStartOfPlateAppearance, // 타자가 들어왔을 때의 LI 기록 [cite: 2026-03-07]
+                    memo: sit.memo
                 });
 
-                // 3. 종료 여부 확인 후 자동 내보내기
                 if (isFinishConditionMet.value) exportCSV();
 
-                // 4. 상황 전환 (3아웃 시)
+                // 2. 로그 기록이 끝난 후에야 비로소 다음 상황으로 필드 업데이트 [cite: 2026-03-07]
                 if (sit.outs === 3) {
                     if (sit.half === 'top') sit.half = 'bottom';
                     else { if (sit.inning < 11) { sit.inning++; sit.half = 'top'; } }
