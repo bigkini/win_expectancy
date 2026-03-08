@@ -112,7 +112,7 @@
                 </div>
             </div>
             <textarea v-model="sit.memo" rows="2" placeholder="MEMO..."></textarea>
-            <div v-if="isGameReallySet" class="gameset-msg">⚾ GAME SET - CSV EXPORTED</div>
+            <div v-if="isGameReallySet" class="gameset-msg">⚾ GAME SET - RECORDING FINISHED</div>
             <div class="btn-row">
                 <button class="btn-save" @click="addLog" :disabled="isGameReallySet">LOG EVENT</button>
                 <button class="btn-undo" @click="undo">UNDO</button>
@@ -200,6 +200,16 @@
                 return half === 'T' ? currSc[0] - lastSc[0] : currSc[1] - lastSc[1];
             };
 
+            const syncInput = (log) => {
+                const [v, h] = log.sc.split('-').map(Number);
+                currentScore.visitor = v; currentScore.home = h;
+                const [inn, hf, out, base] = log.sit.split('_');
+                sit.inning = parseInt(inn);
+                sit.half = (hf === 'T') ? 'top' : 'bottom';
+                sit.outs = parseInt(out);
+                sit.bases = base;
+            };
+
             const addLog = () => {
                 const liToRecord = storedLI.value, currentWP = parseFloat(liveWP.value);
                 const lastWP = logs.value[logs.value.length - 1].homeWP;
@@ -227,28 +237,13 @@
                 sit.memo = ''; updateChart();
             };
 
-            // [Undo 보강] 로그 삭제 뿐만 아니라 상황판도 되돌림 ㅡ,.ㅡ
             const undo = () => {
                 if (logs.value.length > 1) {
-                    logs.value.pop(); // 현재 로그 제거
+                    logs.value.pop();
                     isGameReallySet.value = false;
-                    
-                    // 마지막 남은 로그를 기준으로 상황판 복구
-                    const last = logs.value[logs.value.length - 1];
-                    syncInput(last);
+                    syncInput(logs.value[logs.value.length - 1]);
                     updateChart();
                 }
-            };
-
-            const syncInput = (log) => {
-                const [v, h] = log.sc.split('-').map(Number);
-                currentScore.visitor = v;
-                currentScore.home = h;
-                const [inn, hf, out, base] = log.sit.split('_');
-                sit.inning = parseInt(inn);
-                sit.half = (hf === 'T') ? 'top' : 'bottom';
-                sit.outs = parseInt(out);
-                sit.bases = base;
             };
 
             const sortedLogs = computed(() => [...logs.value].sort((a, b) => {
@@ -278,8 +273,8 @@
                         return { id: parseInt(cols[0]), sit: cols[1], sc: cols[2], homeWP: parseFloat(cols[3]), chg: parseFloat(cols[4]), li: cols[5], memo: cols[6].replace(/^"|"$/g, '').replace(/""/g, '"') };
                     });
                     if (newLogs.length > 0) {
-                        logs.value = newLogs;
-                        syncInput(newLogs[newLogs.length - 1]); // 임포트 시에도 동기화 ㅡ,.ㅡ
+                        logs.value = newLogs; 
+                        syncInput(newLogs[newLogs.length - 1]);
                         updateChart();
                     }
                 };
