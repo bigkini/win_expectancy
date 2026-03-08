@@ -83,14 +83,14 @@
     <div class="main-grid">
         <div class="card">
             <div class="field-row">
-                <div><label style="color: #3b82f6;">VISITOR (TOTAL)</label>
+                <div><label style="color: #3b82f6;">VISITOR</label>
                     <div style="display:flex; gap:5px; background:rgba(255,255,255,0.05); padding:5px; border-radius:6px;">
                         <button class="btn-step" @click="currentScore.visitor = Math.max(0, currentScore.visitor-1)">-</button>
                         <input type="number" v-model="currentScore.visitor" class="score-display" readonly>
                         <button class="btn-step" @click="currentScore.visitor++">+</button>
                     </div>
                 </div>
-                <div><label style="color: var(--red);">HOME (TOTAL)</label>
+                <div><label style="color: var(--red);">HOME</label>
                     <div style="display:flex; gap:5px; background:rgba(255,255,255,0.05); padding:5px; border-radius:6px;">
                         <button class="btn-step" @click="currentScore.home = Math.max(0, currentScore.home-1)">-</button>
                         <input type="number" v-model="currentScore.home" class="score-display" readonly>
@@ -312,4 +312,5 @@
 </script>
 </body>
 </html>
+
 
