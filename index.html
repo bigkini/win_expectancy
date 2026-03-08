@@ -141,10 +141,10 @@
                     </td>
                     <td>{{l.li}}</td>
                 </tr>
-                <tr v-if="activeMemoId === l.id" class="memo-active-row" :class="{'row-bot': l.sit.includes('_B_')}">
+                <tr v-if="activeMemoId === l.id" class="memo-active-row">
                     <td colspan="6">↳ <input type="text" v-model="l.memo" class="memo-edit-input" @blur="activeMemoId = null" @keyup.enter="activeMemoId = null" v-focus></td>
                 </tr>
-                <tr v-else-if="l.memo" class="memo-display-row" :class="{'row-bot': l.sit.includes('_B_')}" @click="activeMemoId = l.id">
+                <tr v-else-if="l.memo" class="memo-display-row">
                     <td colspan="6">↳ {{l.memo}}</td>
                 </tr>
             </tbody>
@@ -159,14 +159,14 @@
     createApp({
         setup() {
             const logs = ref([{ id: 1, sit: "1_T_0_0", sc: "0:0", homeWP: 50.0, chg: 0, li: "0.81", memo: "Play Ball!" }]);
-            const historyStack = ref([]); // undo용 입력 상태 저장 스택 ㅡ,.ㅡ
             const currentScore = reactive({ visitor: 0, home: 0 });
             const sit = reactive({ inning: 1, half: 'top', outs: 0, bases: '0', memo: '' });
             const teams = reactive({ visitor: 'VISITOR', home: 'HOME' });
-            const runEnv = ref(4.5);
-            const activeMemoId = ref(null);
-            const sortKey = ref('id'), sortDir = ref(-1);
-            const fileInput = ref(null), storedLI = ref("0.81");
+            const runEnv = ref(4.5), storedLI = ref("0.81"), activeMemoId = ref(null);
+            const sortKey = ref('id'), sortDir = ref(-1), fileInput = ref(null);
+            
+            // Undo를 위한 히스토리 스택 ㅡ,.ㅡ
+            const historyStack = ref([]);
             const isActuallyFinished = ref(false);
 
             const headers = [
@@ -191,16 +191,19 @@
 
             const getInningScore = (inning, half) => {
                 const currentHalfLogs = logs.value.filter(l => l.sit.startsWith(`${inning}_${half}`));
-                if (currentHalfLogs.length === 0) return logs.value.some(l => { const [i, h] = l.sit.split('_'); return Number(i) > inning || (Number(i) === inning && (half === 'T' || h === 'B')); }) ? '·' : '-';
+                if (currentHalfLogs.length === 0) return '-';
                 const lastOfHalf = currentHalfLogs[currentHalfLogs.length-1];
-                const prevLogs = logs.value.filter(l => { const [i, h] = l.sit.split('_'); return Number(i) < inning || (Number(i) === inning && half === 'B' && h === 'T'); });
+                const prevLogs = logs.value.filter(l => {
+                    const [i, h] = l.sit.split('_');
+                    return Number(i) < inning || (Number(i) === inning && half === 'B' && h === 'T');
+                });
                 const lastSc = prevLogs.length > 0 ? prevLogs[prevLogs.length-1].sc.split(':').map(Number) : [0, 0];
                 const currSc = lastOfHalf.sc.split(':').map(Number);
                 return half === 'T' ? currSc[0] - lastSc[0] : currSc[1] - lastSc[1];
             };
 
             const addLog = () => {
-                // 1. 버튼 클릭 시점의 '수동 입력창 상태'를 백업 ㅡ,.ㅡ
+                // 1. [기록 전 상태 저장] ㅡ,.ㅡ
                 historyStack.value.push(JSON.parse(JSON.stringify({ score: currentScore, sit: sit })));
 
                 const liToRecord = storedLI.value, currentWP = parseFloat(liveWP.value);
@@ -214,32 +217,31 @@
                     homeWP: currentWP, chg: delta, li: liToRecord, memo: sit.memo
                 });
 
-                // 상황 자동 전환 로직
+                // 2. 상황 전환 및 종료 판정
                 if (sit.outs === 3) {
                     if (sit.half === 'top') { sit.half = 'bottom'; } 
                     else {
-                        if (sit.inning >= 9 && currentScore.visitor !== currentScore.home) { isActuallyFinished.value = true; exportCSV(); return; }
+                        if (sit.inning >= 9 && currentScore.visitor !== currentScore.home) {
+                            isActuallyFinished.value = true; exportCSV(); return; 
+                        }
                         if (sit.inning < 11) { sit.inning++; sit.half = 'top'; }
                     }
                     sit.outs = 0; sit.bases = '0';
                 } else if (sit.half === 'bottom' && sit.inning >= 9 && currentScore.home > currentScore.visitor) {
                     isActuallyFinished.value = true; exportCSV();
                 }
+                
                 sit.memo = ''; updateChart();
             };
 
             const undo = () => {
                 if (logs.value.length > 1 && historyStack.value.length > 0) {
                     logs.value.pop();
-                    const prevState = historyStack.value.pop(); // 백업된 상태를 복구 ㅡ,.ㅡ
+                    const prevState = historyStack.value.pop(); // ㅡ,.ㅡ 복구!
                     
                     currentScore.visitor = prevState.score.visitor;
                     currentScore.home = prevState.score.home;
-                    sit.inning = prevState.sit.inning;
-                    sit.half = prevState.sit.half;
-                    sit.outs = prevState.sit.outs;
-                    sit.bases = prevState.sit.bases;
-                    sit.memo = prevState.sit.memo;
+                    Object.assign(sit, prevState.sit);
                     
                     isActuallyFinished.value = false;
                     updateChart();
@@ -256,8 +258,10 @@
                 let csv = "No,Situation,Score,Home_WP,Delta_Offense,LI,Note\n";
                 logs.value.forEach(l => csv += `${l.id},${l.sit},${l.sc},${l.homeWP.toFixed(2)},${l.chg.toFixed(2)},${l.li},"${(l.memo || '').replace(/"/g, '""')}"\n`);
                 const blob = new Blob(["\ufeff" + csv], { type: 'text/csv;charset=utf-8;' });
-                const link = document.createElement("a"); link.href = URL.createObjectURL(blob);
-                link.download = `${teams.visitor}_vs_${teams.home}_Log_${new Date().toISOString().slice(0,10)}.csv`; link.click();
+                const link = document.createElement("a");
+                link.href = URL.createObjectURL(blob);
+                link.download = `${teams.visitor}_vs_${teams.home}_Log_${new Date().toISOString().slice(0,10)}.csv`;
+                link.click();
             };
 
             const triggerImport = () => fileInput.value.click();
@@ -275,9 +279,8 @@
                         const [v, h] = last.sc.split(':').map(Number);
                         currentScore.visitor = v; currentScore.home = h;
                         const [inn, hf, out, base] = last.sit.split('_');
-                        sit.inning = parseInt(inn); sit.half = (hf === 'T') ? 'top' : 'bottom'; sit.outs = parseInt(out); sit.bases = base;
-                        historyStack.value = []; 
-                        updateChart();
+                        sit.inning = parseInt(inn); sit.half = (hf === 'T' ? 'top' : 'bottom'); sit.outs = parseInt(out); sit.bases = base;
+                        historyStack.value = []; updateChart();
                     }
                 };
                 reader.readAsText(file);
@@ -287,7 +290,7 @@
                 let lI = i, lH = h, lO = o, lB = b;
                 if(lO === 3) { lO = 0; lB = "0"; if(lH === 'top') lH = 'bottom'; else { lI++; lH = 'top'; } }
                 const envF = 4.5 / env, diff = Math.max(-15, Math.min(15, Math.round((hs - vs) * envF)));
-                const sitStr = `${lI}_${lH}_${lO}_${String(lB).replace(', ', '')}`;
+                const sitStr = `${lI > 9 ? 9 : lI}_${lH}_${lO}_${String(lB).replace(', ', '')}`;
                 return bigTable[sitStr] ? bigTable[sitStr].probs[diff.toString()] : (hs >= vs ? 1.0 : 0.0);
             };
 
@@ -301,7 +304,7 @@
 
             onMounted(() => {
                 const ctx = document.getElementById('wpChart').getContext('2d');
-                chart = new Chart(ctx, { type: 'line', data: { labels: ['0'], datasets: [{ label: 'WP', data: [50], borderColor: '#ef4444', backgroundColor: 'rgba(239, 68, 68, 0.1)', fill: true, tension: 0.1, pointRadius: 3 }] }, options: { responsive: true, maintainAspectRatio: false, scales: { y: { min: 0, max: 100 } }, plugins: { legend: { display: false } } } });
+                chart = new Chart(ctx, { type: 'line', data: { labels: ['0'], datasets: [{ label: 'WP', data: [50], borderColor: '#ef4444', backgroundColor: 'rgba(239, 68, 68, 0.1)', fill: true, tension: 0.1, pointRadius: 3 }] }, options: { responsive: true, maintainAspectRatio: false, scales: { y: { min: 0, max: 100 } } } });
                 updateChart();
             });
 
