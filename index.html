@@ -112,9 +112,9 @@
                 </div>
             </div>
             <textarea v-model="sit.memo" rows="2" placeholder="MEMO..."></textarea>
-            <div v-if="isFinishConditionMet" class="gameset-msg">⚾ GAME SET CONDITION MET - AUTO EXPORT ON LOG</div>
+            <div v-if="isGameReallySet" class="gameset-msg">⚾ GAME SET - CSV EXPORTED</div>
             <div class="btn-row">
-                <button class="btn-save" @click="addLog">LOG EVENT</button>
+                <button class="btn-save" @click="addLog" :disabled="isGameReallySet">LOG EVENT</button>
                 <button class="btn-undo" @click="undo">UNDO</button>
             </div>
             <div class="live-stats">
@@ -141,10 +141,10 @@
                     </td>
                     <td>{{l.li}}</td>
                 </tr>
-                <tr v-if="activeMemoId === l.id" class="memo-active-row" :class="{'row-bot': l.sit.includes('_B_')}">
+                <tr v-if="activeMemoId === l.id" class="memo-active-row">
                     <td colspan="6">↳ <input type="text" v-model="l.memo" class="memo-edit-input" @blur="activeMemoId = null" @keyup.enter="activeMemoId = null" v-focus></td>
                 </tr>
-                <tr v-else-if="l.memo" class="memo-display-row" :class="{'row-bot': l.sit.includes('_B_')}" @click="activeMemoId = l.id">
+                <tr v-else-if="l.memo" class="memo-display-row">
                     <td colspan="6">↳ {{l.memo}}</td>
                 </tr>
             </tbody>
@@ -158,16 +158,12 @@
 
     createApp({
         setup() {
-            const logs = ref([{ id: 1, sit: "1_T_0_0", sc: "0:0", homeWP: 50.0, chg: 0, li: "0.81", memo: "Play Ball!" }]);
+            const logs = ref([{ id: 1, sit: "1_T_0_0", sc: "0-0", homeWP: 50.0, chg: 0, li: "0.81", memo: "Play Ball!" }]);
             const currentScore = reactive({ visitor: 0, home: 0 });
             const sit = reactive({ inning: 1, half: 'top', outs: 0, bases: '0', memo: '' });
             const teams = reactive({ visitor: 'VISITOR', home: 'HOME' });
-            const runEnv = ref(4.5);
-            const activeMemoId = ref(null);
-            const sortKey = ref('id');
-            const sortDir = ref(-1);
-            const fileInput = ref(null);
-            const storedLI = ref("0.81");
+            const runEnv = ref(4.5), storedLI = ref("0.81"), activeMemoId = ref(null);
+            const sortKey = ref('id'), sortDir = ref(-1), isGameReallySet = ref(false), fileInput = ref(null);
 
             const headers = [
                 {label:'#', key:'id'}, {label:'SITUATION', key:'sit'}, {label:'SCORE', key:'sc'},
@@ -176,40 +172,83 @@
 
             const liveWP = computed(() => {
                 if (typeof bigTable === 'undefined') return "50.0";
-                const wp = getRawHomeWP(sit.inning, sit.half, sit.outs, sit.bases, currentScore.visitor, currentScore.home, runEnv.value);
+                const lookupInning = Math.min(sit.inning, 9);
+                const wp = getRawHomeWP(lookupInning, sit.half, sit.outs, sit.bases, currentScore.visitor, currentScore.home, runEnv.value);
                 return (wp * 100).toFixed(1);
             });
 
             const liveLI = computed(() => {
                 if (sit.outs === 3) return "---";
-                const wp = getRawHomeWP(sit.inning, sit.half, sit.outs, sit.bases, currentScore.visitor, currentScore.home, runEnv.value);
-                const nextWP = getRawHomeWP(sit.inning, sit.half, sit.outs + 1, sit.bases, currentScore.visitor, currentScore.home, runEnv.value);
+                const lookupInning = Math.min(sit.inning, 9);
+                const wp = getRawHomeWP(lookupInning, sit.half, sit.outs, sit.bases, currentScore.visitor, currentScore.home, runEnv.value);
+                const nextWP = getRawHomeWP(lookupInning, sit.half, sit.outs + 1, sit.bases, currentScore.visitor, currentScore.home, runEnv.value);
                 return (Math.abs(wp - nextWP) / 0.027).toFixed(2);
             });
 
-            watch(logs, () => {
-                storedLI.value = liveLI.value;
-            }, { deep: true });
-
-            const isFinishConditionMet = computed(() => (sit.inning >= 9 && sit.half === 'bottom' && currentScore.home > currentScore.visitor));
+            watch(logs, () => { storedLI.value = liveLI.value; }, { deep: true });
 
             const getInningScore = (inning, half) => {
                 const currentHalfLogs = logs.value.filter(l => l.sit.startsWith(`${inning}_${half}`));
-                if (currentHalfLogs.length === 0) {
-                    const hasLater = logs.value.some(l => {
-                        const [i, h] = l.sit.split('_');
-                        return Number(i) > inning || (Number(i) === inning && (half === 'T' || h === 'B'));
-                    });
-                    return hasLater ? '·' : '-';
-                }
+                if (currentHalfLogs.length === 0) return '-';
                 const lastOfHalf = currentHalfLogs[currentHalfLogs.length-1];
                 const prevLogs = logs.value.filter(l => {
                     const [i, h] = l.sit.split('_');
                     return Number(i) < inning || (Number(i) === inning && half === 'B' && h === 'T');
                 });
-                const lastSc = prevLogs.length > 0 ? prevLogs[prevLogs.length-1].sc.split(':').map(Number) : [0, 0];
-                const currSc = lastOfHalf.sc.split(':').map(Number);
+                const lastSc = prevLogs.length > 0 ? prevLogs[prevLogs.length-1].sc.split('-').map(Number) : [0, 0];
+                const currSc = lastOfHalf.sc.split('-').map(Number);
                 return half === 'T' ? currSc[0] - lastSc[0] : currSc[1] - lastSc[1];
+            };
+
+            const addLog = () => {
+                const liToRecord = storedLI.value, currentWP = parseFloat(liveWP.value);
+                const lastWP = logs.value[logs.value.length - 1].homeWP;
+                const delta = sit.half === 'top' ? -(currentWP - lastWP) : (currentWP - lastWP);
+                
+                logs.value.push({
+                    id: logs.value.length + 1,
+                    sit: `${sit.inning}_${sit.half==='top'?'T':'B'}_${sit.outs}_${sit.bases}`,
+                    sc: `${currentScore.visitor}-${currentScore.home}`,
+                    homeWP: currentWP, chg: delta, li: liToRecord, memo: sit.memo
+                });
+
+                if (sit.outs === 3) {
+                    if (sit.half === 'top') { sit.half = 'bottom'; } 
+                    else {
+                        if (sit.inning >= 9 && currentScore.visitor !== currentScore.home) {
+                            isGameReallySet.value = true; exportCSV(); return; 
+                        }
+                        if (sit.inning < 11) { sit.inning++; sit.half = 'top'; }
+                    }
+                    sit.outs = 0; sit.bases = '0';
+                } else if (sit.half === 'bottom' && sit.inning >= 9 && currentScore.home > currentScore.visitor) {
+                    isGameReallySet.value = true; exportCSV();
+                }
+                sit.memo = ''; updateChart();
+            };
+
+            // [Undo 보강] 로그 삭제 뿐만 아니라 상황판도 되돌림 ㅡ,.ㅡ
+            const undo = () => {
+                if (logs.value.length > 1) {
+                    logs.value.pop(); // 현재 로그 제거
+                    isGameReallySet.value = false;
+                    
+                    // 마지막 남은 로그를 기준으로 상황판 복구
+                    const last = logs.value[logs.value.length - 1];
+                    syncInput(last);
+                    updateChart();
+                }
+            };
+
+            const syncInput = (log) => {
+                const [v, h] = log.sc.split('-').map(Number);
+                currentScore.visitor = v;
+                currentScore.home = h;
+                const [inn, hf, out, base] = log.sit.split('_');
+                sit.inning = parseInt(inn);
+                sit.half = (hf === 'T') ? 'top' : 'bottom';
+                sit.outs = parseInt(out);
+                sit.bases = base;
             };
 
             const sortedLogs = computed(() => [...logs.value].sort((a, b) => {
@@ -218,51 +257,19 @@
                 return vA > vB ? sortDir.value : -sortDir.value;
             }));
 
-            const addLog = () => {
-                const liToRecord = storedLI.value;
-                const currentWP = parseFloat(liveWP.value);
-                const lastWP = logs.value[logs.value.length - 1].homeWP;
-                const delta = sit.half === 'top' ? -(currentWP - lastWP) : (currentWP - lastWP);
-                
-                logs.value.push({
-                    id: logs.value.length + 1,
-                    sit: `${sit.inning}_${sit.half==='top'?'T':'B'}_${sit.outs}_${sit.bases}`,
-                    sc: `${currentScore.visitor}:${currentScore.home}`,
-                    homeWP: currentWP, 
-                    chg: delta, 
-                    li: liToRecord,
-                    memo: sit.memo
-                });
-
-                if (isFinishConditionMet.value) exportCSV();
-
-                if (sit.outs === 3) {
-                    if (sit.half === 'top') sit.half = 'bottom';
-                    else { if (sit.inning < 11) { sit.inning++; sit.half = 'top'; } }
-                    sit.outs = 0; sit.bases = '0';
-                }
-                sit.memo = '';
-                updateChart();
-            };
-
             const exportCSV = () => {
                 let csv = "No,Situation,Score,Home_WP,Delta_Offense,LI,Note\n";
                 logs.value.forEach(l => csv += `${l.id},${l.sit},${l.sc},${l.homeWP.toFixed(2)},${l.chg.toFixed(2)},${l.li},"${(l.memo || '').replace(/"/g, '""')}"\n`);
                 const blob = new Blob(["\ufeff" + csv], { type: 'text/csv;charset=utf-8;' });
                 const link = document.createElement("a");
                 link.href = URL.createObjectURL(blob);
-                const dateStr = new Date().toISOString().slice(0,10);
-                link.download = `${teams.visitor}_vs_${teams.home}_Log_${dateStr}.csv`;
+                link.download = `${teams.visitor}_vs_${teams.home}_Log_${new Date().toISOString().slice(0,10)}.csv`;
                 link.click();
             };
 
-            const undo = () => { if(logs.value.length > 1) { logs.value.pop(); updateChart(); } };
-            const sort = (key) => { if(sortKey.value === key) sortDir.value *= -1; else { sortKey.value = key; sortDir.value = 1; } };
-            const updateChart = () => { if (chart) { chart.data.labels = ['0', ...logs.value.map(l => l.id)]; chart.data.datasets[0].data = [50, ...logs.value.map(l => l.homeWP)]; chart.update(); } };
             const triggerImport = () => fileInput.value.click();
             const handleImport = (e) => {
-                const file = e.target.files[0];
-                if (!file) return;
+                const file = e.target.files[0]; if (!file) return;
                 const reader = new FileReader();
                 reader.onload = (event) => {
                     const lines = event.target.result.split('\n').filter(l => l.trim() !== "");
@@ -272,11 +279,7 @@
                     });
                     if (newLogs.length > 0) {
                         logs.value = newLogs;
-                        const last = newLogs[newLogs.length-1];
-                        const [v, h] = last.sc.split(':').map(Number);
-                        currentScore.visitor = v; currentScore.home = h;
-                        const [inn, hf, out, base] = last.sit.split('_');
-                        sit.inning = parseInt(inn); sit.half = (hf === 'T') ? 'top' : 'bottom'; sit.outs = parseInt(out); sit.bases = base;
+                        syncInput(newLogs[newLogs.length - 1]); // 임포트 시에도 동기화 ㅡ,.ㅡ
                         updateChart();
                     }
                 };
@@ -286,27 +289,21 @@
             const getRawHomeWP = (i, h, o, b, vs, hs, env) => {
                 let lI = i, lH = h, lO = o, lB = b;
                 if(lO === 3) { lO = 0; lB = "0"; if(lH === 'top') lH = 'bottom'; else { lI++; lH = 'top'; } }
-                
-                // [Patch] 연장전 10회 이상 상황을 9회 데이터로 매핑 ㅡ,.ㅡ
-                const lookupInning = Math.min(lI, 9);
-                
                 const envF = 4.5 / env, diff = Math.max(-15, Math.min(15, Math.round((hs - vs) * envF)));
-                const sitStr = `${lookupInning}_${lH}_${lO}_${String(lB).replace(', ', '')}`;
+                const sitStr = `${lI > 9 ? 9 : lI}_${lH}_${lO}_${String(lB).replace(', ', '')}`;
                 return bigTable[sitStr] ? bigTable[sitStr].probs[diff.toString()] : (hs >= vs ? 1.0 : 0.0);
             };
 
             let chart = null;
             onMounted(() => {
                 const ctx = document.getElementById('wpChart').getContext('2d');
-                chart = new Chart(ctx, { type: 'line', data: { labels: ['0'], datasets: [{ label: 'WP', data: [50], borderColor: '#ef4444', backgroundColor: 'rgba(239, 68, 68, 0.1)', fill: true, tension: 0.1, pointRadius: 3 }] }, options: { responsive: true, maintainAspectRatio: false, scales: { y: { min: 0, max: 100, grid: { color: '#334155' } }, x: { grid: { display: false } } }, plugins: { legend: { display: false } } } });
+                chart = new Chart(ctx, { type: 'line', data: { labels: ['0'], datasets: [{ label: 'WP', data: [50], borderColor: '#ef4444', backgroundColor: 'rgba(239, 68, 68, 0.1)', fill: true, tension: 0.1, pointRadius: 3 }] }, options: { responsive: true, maintainAspectRatio: false, scales: { y: { min: 0, max: 100 } }, plugins: { legend: { display: false } } } });
                 updateChart();
             });
 
-            return { logs, sit, currentScore, teams, runEnv, liveWP, liveLI, headers, sortedLogs, activeMemoId, isFinishConditionMet, sort, addLog, undo, getInningScore, triggerImport, handleImport, exportCSV, fileInput };
+            return { logs, sit, currentScore, teams, runEnv, liveWP, liveLI, headers, sortedLogs, activeMemoId, isGameReallySet, undo, getInningScore, triggerImport, handleImport, exportCSV, fileInput, sort: (key) => { if(sortKey.value === key) sortDir.value *= -1; else { sortKey.value = key; sortDir.value = 1; } } };
         }
-    })
-    .directive('focus', { mounted: (el) => el.focus() })
-    .mount('#app');
+    }).directive('focus', { mounted: (el) => el.focus() }).mount('#app');
 </script>
 </body>
 </html>
