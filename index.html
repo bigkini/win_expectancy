@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>WinExp Pro Terminal v7.9</title>
+    <title>WinExp Pro Terminal v8.0</title>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
@@ -55,7 +55,7 @@
 
 <div id="app" class="container">
     <div class="top-bar">
-        <span style="color: var(--accent); font-weight: 900;">WinExp Pro v7.9</span>
+        <span style="color: var(--accent); font-weight: 900;">WinExp Pro v8.0</span>
         <div style="display: flex; gap: 10px; align-items: center;">
             <label style="font-size: 0.75rem;">ENV(RE):</label>
             <input type="number" v-model="runEnv" step="0.1" style="width:45px; background:var(--dark); color:var(--accent); border:1px solid #334155; text-align:center;">
@@ -112,9 +112,9 @@
                 </div>
             </div>
             <textarea v-model="sit.memo" rows="2" placeholder="MEMO..."></textarea>
-            <div v-if="isFinishConditionMet" class="gameset-msg">⚾ GAME SET CONDITION MET - AUTO EXPORT ON LOG</div>
+            <div v-if="isActuallyFinished" class="gameset-msg">⚾ GAME SET - CSV EXPORTED</div>
             <div class="btn-row">
-                <button class="btn-save" @click="addLog">LOG EVENT</button>
+                <button class="btn-save" @click="addLog" :disabled="isActuallyFinished">LOG EVENT</button>
                 <button class="btn-undo" @click="undo">UNDO</button>
             </div>
             <div class="live-stats">
@@ -164,12 +164,9 @@
             const teams = reactive({ visitor: 'VISITOR', home: 'HOME' });
             const runEnv = ref(4.5);
             const activeMemoId = ref(null);
-            const sortKey = ref('id');
-            const sortDir = ref(-1);
-            const fileInput = ref(null);
-            
-            // [핵심] 직전 타석 LI를 보관할 '주머니' ㅡ,.ㅡ
-            const storedLI = ref("0.81");
+            const sortKey = ref('id'), sortDir = ref(-1);
+            const fileInput = ref(null), storedLI = ref("0.81");
+            const isActuallyFinished = ref(false); // 수동 종료 플래그 ㅡ,.ㅡ
 
             const headers = [
                 {label:'#', key:'id'}, {label:'SITUATION', key:'sit'}, {label:'SCORE', key:'sc'},
@@ -189,45 +186,8 @@
                 return (Math.abs(wp - nextWP) / 0.027).toFixed(2);
             });
 
-            // [감시자] 로그가 찍히면(=타석 종료), 현재 화면의 LI를 '주머니'에 쏙 넣어둠
-            // 이 수치가 다음 타석의 "바뀌기 전 LI"가 됨
-            watch(logs, () => {
-                storedLI.value = liveLI.value;
-            }, { deep: true });
+            watch(logs, () => { storedLI.value = liveLI.value; }, { deep: true });
 
-            const addLog = () => {
-                // 1. [LI 기록] 주머니에 있던 '바뀌기 전 LI'를 가져옴 ㅡ,.ㅡ
-                const liToRecord = storedLI.value;
-                
-                // 2. [WP 기록] 상황이 바뀐 후 계산된 현재 WP를 가져옴
-                const currentWP = parseFloat(liveWP.value);
-                const lastWP = logs.value[logs.value.length - 1].homeWP;
-                const delta = sit.half === 'top' ? -(currentWP - lastWP) : (currentWP - lastWP);
-                
-                logs.value.push({
-                    id: logs.value.length + 1,
-                    sit: `${sit.inning}_${sit.half==='top'?'T':'B'}_${sit.outs}_${sit.bases}`,
-                    sc: `${currentScore.visitor}:${currentScore.home}`,
-                    homeWP: currentWP, 
-                    chg: delta, 
-                    li: liToRecord, // 이제 안 밀림
-                    memo: sit.memo
-                });
-
-                if (isFinishConditionMet.value) exportCSV();
-
-                // 3. 상황 자동 전환
-                if (sit.outs === 3) {
-                    if (sit.half === 'top') sit.half = 'bottom';
-                    else { if (sit.inning < 11) { sit.inning++; sit.half = 'top'; } }
-                    sit.outs = 0; sit.bases = '0';
-                }
-                sit.memo = '';
-                updateChart();
-            };
-
-            // 기타 함수 (undo, sort, getInningScore 등 v7.8과 동일)
-            const isFinishConditionMet = computed(() => (sit.inning >= 9 && sit.half === 'bottom' && currentScore.home > currentScore.visitor));
             const getInningScore = (inning, half) => {
                 const currentHalfLogs = logs.value.filter(l => l.sit.startsWith(`${inning}_${half}`));
                 if (currentHalfLogs.length === 0) {
@@ -246,32 +206,64 @@
                 const currSc = lastOfHalf.sc.split(':').map(Number);
                 return half === 'T' ? currSc[0] - lastSc[0] : currSc[1] - lastSc[1];
             };
+
             const sortedLogs = computed(() => [...logs.value].sort((a, b) => {
                 let vA = a[sortKey.value], vB = b[sortKey.value];
                 if (['homeWP', 'chg', 'li'].includes(sortKey.value)) { vA = parseFloat(vA) || 0; vB = parseFloat(vB) || 0; }
                 return vA > vB ? sortDir.value : -sortDir.value;
             }));
+
+            const addLog = () => {
+                const liToRecord = storedLI.value, currentWP = parseFloat(liveWP.value);
+                const lastWP = logs.value[logs.value.length - 1].homeWP;
+                const delta = sit.half === 'top' ? -(currentWP - lastWP) : (currentWP - lastWP);
+                
+                logs.value.push({
+                    id: logs.value.length + 1,
+                    sit: `${sit.inning}_${sit.half==='top'?'T':'B'}_${sit.outs}_${sit.bases}`,
+                    sc: `${currentScore.visitor}:${currentScore.home}`,
+                    homeWP: currentWP, chg: delta, li: liToRecord, memo: sit.memo
+                });
+
+                // [핵심] 야구 종료 판정 로직 보강 ㅡ,.ㅡ
+                if (sit.outs === 3) {
+                    if (sit.half === 'top') {
+                        sit.half = 'bottom';
+                    } else {
+                        // 9회말(또는 연장말) 3아웃 시 승패가 갈렸는지 확인
+                        if (sit.inning >= 9 && currentScore.visitor !== currentScore.home) {
+                            isActuallyFinished.value = true;
+                            exportCSV();
+                            return; // 이닝 안 넘어감!
+                        }
+                        if (sit.inning < 11) { sit.inning++; sit.half = 'top'; }
+                    }
+                    sit.outs = 0; sit.bases = '0';
+                } else if (sit.half === 'bottom' && sit.inning >= 9 && currentScore.home > currentScore.visitor) {
+                    // 9회말 이후 홈팀 끝내기 상황
+                    isActuallyFinished.value = true;
+                    exportCSV();
+                }
+
+                sit.memo = ''; updateChart();
+            };
+
             const exportCSV = () => {
                 let csv = "No,Situation,Score,Home_WP,Delta_Offense,LI,Note\n";
                 logs.value.forEach(l => csv += `${l.id},${l.sit},${l.sc},${l.homeWP.toFixed(2)},${l.chg.toFixed(2)},${l.li},"${(l.memo || '').replace(/"/g, '""')}"\n`);
-    
                 const blob = new Blob(["\ufeff" + csv], { type: 'text/csv;charset=utf-8;' });
                 const link = document.createElement("a");
                 link.href = URL.createObjectURL(blob);
-    
-                const dateStr = new Date().toISOString().slice(0,10);
-                const fileName = `${teams.visitor}_vs_${teams.home}_Log_${dateStr}.csv`;
-    
-                link.download = fileName;
+                link.download = `${teams.visitor}_vs_${teams.home}_Log_${new Date().toISOString().slice(0,10)}.csv`;
                 link.click();
             };
-            const undo = () => { if(logs.value.length > 1) { logs.value.pop(); updateChart(); } };
+
+            const undo = () => { if(logs.value.length > 1) { logs.value.pop(); isActuallyFinished.value = false; updateChart(); } };
             const sort = (key) => { if(sortKey.value === key) sortDir.value *= -1; else { sortKey.value = key; sortDir.value = 1; } };
             const updateChart = () => { if (chart) { chart.data.labels = ['0', ...logs.value.map(l => l.id)]; chart.data.datasets[0].data = [50, ...logs.value.map(l => l.homeWP)]; chart.update(); } };
             const triggerImport = () => fileInput.value.click();
             const handleImport = (e) => {
-                const file = e.target.files[0];
-                if (!file) return;
+                const file = e.target.files[0]; if (!file) return;
                 const reader = new FileReader();
                 reader.onload = (event) => {
                     const lines = event.target.result.split('\n').filter(l => l.trim() !== "");
@@ -280,8 +272,7 @@
                         return { id: parseInt(cols[0]), sit: cols[1], sc: cols[2], homeWP: parseFloat(cols[3]), chg: parseFloat(cols[4]), li: cols[5], memo: cols[6].replace(/^"|"$/g, '').replace(/""/g, '"') };
                     });
                     if (newLogs.length > 0) {
-                        logs.value = newLogs;
-                        const last = newLogs[newLogs.length-1];
+                        logs.value = newLogs; const last = newLogs[newLogs.length-1];
                         const [v, h] = last.sc.split(':').map(Number);
                         currentScore.visitor = v; currentScore.home = h;
                         const [inn, hf, out, base] = last.sit.split('_');
@@ -291,6 +282,7 @@
                 };
                 reader.readAsText(file);
             };
+
             const getRawHomeWP = (i, h, o, b, vs, hs, env) => {
                 let lI = i, lH = h, lO = o, lB = b;
                 if(lO === 3) { lO = 0; lB = "0"; if(lH === 'top') lH = 'bottom'; else { lI++; lH = 'top'; } }
@@ -298,17 +290,17 @@
                 const sitStr = `${lI > 9 ? 9 : lI}_${lH}_${lO}_${String(lB).replace(', ', '')}`;
                 return bigTable[sitStr] ? bigTable[sitStr].probs[diff.toString()] : (hs >= vs ? 1.0 : 0.0);
             };
+
             let chart = null;
             onMounted(() => {
                 const ctx = document.getElementById('wpChart').getContext('2d');
-                chart = new Chart(ctx, { type: 'line', data: { labels: ['0'], datasets: [{ label: 'WP', data: [50], borderColor: '#ef4444', backgroundColor: 'rgba(239, 68, 68, 0.1)', fill: true, tension: 0.1, pointRadius: 3 }] }, options: { responsive: true, maintainAspectRatio: false, scales: { y: { min: 0, max: 100, grid: { color: '#334155' } }, x: { grid: { display: false } } }, plugins: { legend: { display: false } } } });
+                chart = new Chart(ctx, { type: 'line', data: { labels: ['0'], datasets: [{ label: 'WP', data: [50], borderColor: '#ef4444', backgroundColor: 'rgba(239, 68, 68, 0.1)', fill: true, tension: 0.1, pointRadius: 3 }] }, options: { responsive: true, maintainAspectRatio: false, scales: { y: { min: 0, max: 100 } }, plugins: { legend: { display: false } } } });
                 updateChart();
             });
-            return { logs, sit, currentScore, teams, runEnv, liveWP, liveLI, headers, sortedLogs, activeMemoId, isFinishConditionMet, sort, addLog, undo, getInningScore, triggerImport, handleImport, exportCSV, fileInput };
+
+            return { logs, sit, currentScore, teams, runEnv, liveWP, liveLI, headers, sortedLogs, activeMemoId, isActuallyFinished, sort, addLog, undo, getInningScore, triggerImport, handleImport, exportCSV, fileInput };
         }
-    })
-    .directive('focus', { mounted: (el) => el.focus() })
-    .mount('#app');
+    }).directive('focus', { mounted: (el) => el.focus() }).mount('#app');
 </script>
 </body>
 </html>
